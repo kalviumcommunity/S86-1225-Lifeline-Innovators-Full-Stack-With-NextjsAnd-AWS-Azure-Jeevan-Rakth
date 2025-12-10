@@ -1,31 +1,41 @@
-# 🩸  Project name : Jeevan Rakth — Real-Time Blood Donation & Inventory Network  
-### *A unified digital lifeline connecting donors, patients, hospitals & NGOs.*
+# Jeevan Rakth
 
----
+Lifeline Innovators' full-stack initiative that connects urgent blood requirements with available donors in real time. The app streamlines discovery, verification, and communication so hospitals and community responders can coordinate faster during critical scenarios.
 
-## 📘 Project Description
-Jeevan Rakth is a full-stack, real-time blood donation and inventory management platform designed to fix India’s biggest challenge in emergency healthcare: fragmented communication and outdated blood availability tracking.  
-The platform connects donors, hospitals, NGOs, and emergency responders into one transparent, automated, data-driven ecosystem — ensuring that no life is lost due to delays.
+## Folder Structure
 
----
+```
+jeevan-rakth/
+├── public/
+├── src/
+│   ├── app/
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── page.tsx
+│   ├── components/
+│   └── lib/
+├── eslint.config.mjs
+├── next.config.ts
+├── package.json
+└── tsconfig.json
+```
 
-## 📌 Overview
-Every year, thousands of medical emergencies worsen simply because blood availability is not visible in real-time. Hospitals struggle to connect with verified donors, patients run from one blood bank to another, and NGOs rely on manual calls or WhatsApp chains.
+- `public/` static assets used across the UI, including the app screenshot.
+- `src/app/` Next.js App Router entry point with global styles, layout shell, and root page.
+- `src/components/` shared UI primitives and composite widgets (currently staged for upcoming sprint work).
+- `src/lib/` utilities for API access, data adapters, and configuration helpers.
+- Config files at the project root ensure linting, TypeScript, and Next.js runtime settings stay consistent for everyone on the team.
 
-Jeevan Rakth solves this by building a hyper-connected, geolocation-based, automated coordination network for everything related to blood donation, availability, and emergency response.
+## Setup Instructions
 
----
+1. Install dependencies: `cd jeevan-rakth && npm install`
+2. Start the development server: `npm run dev`
+3. Open the app at `http://localhost:3000`
+4. Run the linter before committing: `npm run lint`
 
-## 🧩 Why This Project Matters
-- Eliminates delays in emergency situations  
-- Ensures transparency with secure, tamper-proof data  
-- Connects all stakeholders under a single digital system  
-- Encourages more people to donate through trust & recognition  
-- Reduces the burden on hospital staff and volunteers  
+## Reflection
 
----
+We adopted the Next.js App Router layout to keep routing, layouts, and data-fetching logic co-located. Shared UI and utility logic live in `components` and `lib`, letting parallel squads extend the design system or connect to additional services without touching core pages. Centralized configuration files keep build tooling aligned, which de-risks onboarding. As future sprints introduce donor dashboards, hospital triage views, and integrations with Azure/AWS services, this separation lets each slice scale independently while preserving consistent UX and deployment workflows.
 
-## 👥 Team Members
-- **Vantakukla Durga Sai Mukesh** – Team Coordinater
-- **Ashfaq Syed** – Team member 
-- **Supriya** – Team member 
+## Screenshot
+![alt text](image.png)
