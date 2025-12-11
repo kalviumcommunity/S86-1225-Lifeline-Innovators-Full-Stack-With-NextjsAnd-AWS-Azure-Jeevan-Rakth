@@ -33,6 +33,14 @@ jeevan-rakth/
 3. Open the app at `http://localhost:3000`
 4. Run the linter before committing: `npm run lint`
 
+## Environment Variables
+
+- Copy `.env.example` to `.env.local` and fill in real credentials; keep `.env.local` untracked so secrets stay off Git.
+- `DATABASE_URL` is server-only; reference it with `process.env.DATABASE_URL` inside server components, route handlers, or backend utilities.
+- `NEXT_PUBLIC_API_BASE_URL` is safe for the browser; import it in client components with `process.env.NEXT_PUBLIC_API_BASE_URL` for fetch calls.
+- Only variables prefixed with `NEXT_PUBLIC_` reach client bundles. Avoid using server secrets inside client components or hooks.
+- After editing env files, restart `npm run dev` so Next.js picks up the new values.
+
 ## Reflection
 
 We adopted the Next.js App Router layout to keep routing, layouts, and data-fetching logic co-located. Shared UI and utility logic live in `components` and `lib`, letting parallel squads extend the design system or connect to additional services without touching core pages. Centralized configuration files keep build tooling aligned, which de-risks onboarding. As future sprints introduce donor dashboards, hospital triage views, and integrations with Azure/AWS services, this separation lets each slice scale independently while preserving consistent UX and deployment workflows.
@@ -98,5 +106,5 @@ git commit -m "chore: add ESLint/Prettier/Husky and enable strict TypeScript"
 If lint-staged fixes issues automatically, they will be re-added to the commit. If non-fixable errors exist, fix and re-run the commit.
 
 
-## preview Screenshot
-![alt text](image.png)
+<!-- ## preview Screenshot -->
+<!-- ![alt text](image.png) -->
