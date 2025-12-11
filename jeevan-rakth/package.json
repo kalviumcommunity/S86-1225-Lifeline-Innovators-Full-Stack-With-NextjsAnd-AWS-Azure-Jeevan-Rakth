@@ -10,7 +10,10 @@
     "prepare": "husky install"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx}": ["eslint --fix", "prettier --write"]
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix --max-warnings=0",
+      "prettier --write"
+    ]
   },
   "dependencies": {
     "next": "16.0.8",
