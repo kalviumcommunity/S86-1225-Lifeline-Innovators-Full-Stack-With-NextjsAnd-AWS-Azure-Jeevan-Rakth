@@ -45,6 +45,59 @@ jeevan-rakth/
 
 We adopted the Next.js App Router layout to keep routing, layouts, and data-fetching logic co-located. Shared UI and utility logic live in `components` and `lib`, letting parallel squads extend the design system or connect to additional services without touching core pages. Centralized configuration files keep build tooling aligned, which de-risks onboarding. As future sprints introduce donor dashboards, hospital triage views, and integrations with Azure/AWS services, this separation lets each slice scale independently while preserving consistent UX and deployment workflows.
 
+## Branching Strategy
+
+- `main` is production-ready and branch protected (PR reviews required, status checks must pass, no direct pushes).
+- Feature development: `feature/<feature-name>` such as `feature/donor-matching`.
+- Bug fixes: `fix/<bug-name>` such as `fix/navbar-alignment`.
+- Tooling or dependency chores: `chore/<task-name>` such as `chore/update-eslint`.
+- Documentation updates: `docs/<update-name>` such as `docs/update-readme`.
+- Always branch from the latest `main`, keep branches focused on a single concern, and rebase or merge `main` before opening a PR to resolve drift early.
+
+## Pull Request Template
+
+We document every change using [.github/pull_request_template.md](.github/pull_request_template.md). Copy its structure into each PR description:
+
+```
+## Summary
+Briefly explain the purpose of this PR.
+
+## Changes Made
+- Key update or fix one
+- Key update or fix two
+- Key update or fix three
+
+## Screenshots / Evidence
+Add screenshots, console output, or links if relevant.
+
+## Checklist
+- [ ] Code builds successfully
+- [ ] Lint and tests pass
+- [ ] Reviewed by at least one teammate
+- [ ] Linked to corresponding issue
+```
+
+## Review Checklist
+
+Reviewers walk through this list before hitting approve:
+
+- Code follows our naming conventions and folder structure guidelines.
+- Functionality is verified locally with no console warnings or runtime errors.
+- ESLint, Prettier, and other status checks pass in CI.
+- Comments and docs are meaningful, concise, and up to date.
+- Secrets, API keys, or PII are not exposed in code, commits, or screenshots.
+- Linked issue reflects the scope, and acceptance criteria are met.
+
+## Workflow Reflection
+
+This workflow keeps velocity high without sacrificing quality. Consistent branch naming signals intent at a glance and lets automations (boards, CI, deployments) target patterns reliably. The shared PR template standardises author context so reviewers spend less time deciphering change scope. The checklist anchors quality gates around linting, testing, and security, keeping `main` deployable. Branch protection rules enforce review discipline and force teams to reconcile latest changes before merge, preventing regressions and encouraging continuous collaboration.
+
+## PR Snapshot
+
+![Checks passing on Jeevan Rakth PR](jeevan-rakth/public/screenshots/pr-checks.png)
+
+> Update `public/screenshots/pr-checks.png` with a real pull request screenshot showing required checks passing or reviewer comments resolved to keep this artifact relevant.
+
 
 ## **Tooling Setup & Changes**
 
