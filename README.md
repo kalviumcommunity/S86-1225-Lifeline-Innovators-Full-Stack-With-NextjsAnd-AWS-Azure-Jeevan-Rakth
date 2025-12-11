@@ -37,7 +37,6 @@ jeevan-rakth/
 
 We adopted the Next.js App Router layout to keep routing, layouts, and data-fetching logic co-located. Shared UI and utility logic live in `components` and `lib`, letting parallel squads extend the design system or connect to additional services without touching core pages. Centralized configuration files keep build tooling aligned, which de-risks onboarding. As future sprints introduce donor dashboards, hospital triage views, and integrations with Azure/AWS services, this separation lets each slice scale independently while preserving consistent UX and deployment workflows.
 
-<!-- ## Screenshot -->
 
 ## **Tooling Setup & Changes**
 
@@ -97,3 +96,7 @@ git commit -m "chore: add ESLint/Prettier/Husky and enable strict TypeScript"
 ```
 
 If lint-staged fixes issues automatically, they will be re-added to the commit. If non-fixable errors exist, fix and re-run the commit.
+
+
+## preview Screenshot
+![alt text](image.png)
