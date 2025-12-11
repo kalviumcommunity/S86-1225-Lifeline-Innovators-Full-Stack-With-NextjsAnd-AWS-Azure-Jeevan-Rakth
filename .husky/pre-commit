@@ -1,0 +1,6 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run lint-staged from the nested package where package.json lives
+cd "jeevan-rakth" || exit 0
+npx lint-staged
