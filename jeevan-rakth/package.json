@@ -9,6 +9,9 @@
     "lint": "eslint",
     "prepare": "cd .. && husky install .husky"
   },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
       "eslint --fix --max-warnings=0",
@@ -16,7 +19,9 @@
     ]
   },
   "dependencies": {
+    "@prisma/client": "^5.21.1",
     "next": "16.0.8",
+    "prisma": "^5.21.1",
     "react": "19.2.1",
     "react-dom": "19.2.1"
   },
@@ -33,6 +38,8 @@
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
     "tailwindcss": "^4",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
