@@ -88,6 +88,98 @@ ghi789jkl012   redis:7-alpine         "docker-entrypoint..."   Up 2 minutes    0
 
 If you encounter port-binding conflicts, either stop the conflicting service or adjust the host side of the port mappings (e.g., change `3000:3000` to `3100:3000`). Slow builds typically improve after the initial image pull because subsequent runs reuse cached layers.
 
+## Domain Data Model
+
+### Core Entities
+
+- **User** — registered coordinators, donors, or responders. Each has unique `email`, profile metadata, and lifecycle timestamps.
+- **Team** — cross-functional groups that own projects. Every team has an owner (`owner_id`) and versioned timestamps.
+- **TeamMember** — join table linking users to teams with role metadata and uniqueness on `(team_id, user_id)`.
+- **Project** — initiatives tracked per team; optionally linked to an owner user and keyed by a unique `code` for lookup.
+- **Task** — actionable work items belonging to a project with status/priority enums, optional assignee, and composite uniqueness on `(project_id, title)` to prevent duplicates.
+- **Comment** — discussion tied to tasks, capturing author linkage and cascading deletes.
+
+### Prisma Schema Excerpt
+
+```prisma
+model User {
+	id        Int      @id @default(autoincrement())
+	email     String   @unique
+	memberships TeamMember[]
+	ownedProjects Project[] @relation("ProjectOwner")
+}
+
+model Project {
+	id      Int    @id @default(autoincrement())
+	code    String @unique
+	team    Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+	owner   User?  @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+	tasks   Task[]
+}
+
+model Task {
+	id        Int          @id @default(autoincrement())
+	status    TaskStatus   @default(BACKLOG)
+	priority  TaskPriority @default(MEDIUM)
+	project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+	assignee  User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+	@@unique([projectId, title])
+	@@index([projectId, status])
+}
+```
+
+Full definitions live in [jeevan-rakth/prisma/schema.prisma](jeevan-rakth/prisma/schema.prisma).
+
+### Keys, Constraints, and Indexes
+
+- Primary keys on every table ensure entity identity via `@id` or `SERIAL` columns.
+- Unique constraints on `User.email`, `Project.code`, and `(Task.projectId, Task.title)` guarantee canonical identifiers for API lookups.
+- Foreign keys cascade deletes for dependent records (e.g., tasks drop when a project goes away) while `Project.ownerId` and `Task.assigneeId` use `ON DELETE SET NULL` to preserve history if a user departs.
+- Composite indexes on high-frequency query paths (`Task.projectId` + `status`, `Project.teamId` + `status`) keep dashboards responsive.
+- Join table `TeamMember` enforces uniqueness across `(team_id, user_id)` to stop duplicate memberships and indexes `user_id` for reverse lookups.
+
+### Normalization Notes
+
+- **1NF**: Each table uses atomic columns (no arrays or repeating groups) and every record includes a primary key.
+- **2NF**: Non-key attributes depend on the full primary key; the only composite key (`TeamMember.team_id`, `TeamMember.user_id`) holds role metadata that depends on both.
+- **3NF**: Non-key attributes depend solely on the key (e.g., project status is independent of team attributes), avoiding transitive dependencies.
+
+### Migrations and Seeding
+
+Run these commands from `jeevan-rakth` after installing Prisma (`npm install prisma @prisma/client`):
+
+```bash
+npx prisma migrate dev --name init_schema
+npx prisma db seed
+npx prisma studio
+```
+
+Example migration output:
+
+```text
+Prisma schema loaded from prisma/schema.prisma
+Datasource "db": PostgreSQL database "mydb" at "localhost:5432"
+
+Applying migration `20251212000000_init_schema`
+The following migration(s) have been applied:
+
+	20251212000000_init_schema
+
+Seeded 2 tasks for project JR-HOSP-ALERT.
+```
+
+Open the interactive dashboard with `npx prisma studio` to inspect seeded users, teams, projects, tasks, and comments. The seed script at `prisma/seed.ts` inserts a small collaboration scenario (lead + responder, two tasks, sample comments) so UI work immediately has reference data.
+
+### Query Patterns and Scalability
+
+- Dashboards hit `Task` by project and status; indexes keep those queries sub-millisecond as volume scales.
+- Project detail pages expand related tasks and comments through Prisma relations, which map to `JOIN`s over indexed FKs.
+- Teams and membership queries rely on the `TeamMember` bridge, allowing future analytics (e.g., per-user workload) without denormalized columns.
+- Cascade rules and nullable FKs keep historical data intact when owners leave, supporting auditing at scale.
+
+As data grows, horizontal partitioning can occur at the project level (sharding by `Project.code`), while the current schema already supports read replicas because relations avoid circular optionality.
+
 ## Reflection
 
 We adopted the Next.js App Router layout to keep routing, layouts, and data-fetching logic co-located. Shared UI and utility logic live in `components` and `lib`, letting parallel squads extend the design system or connect to additional services without touching core pages. Centralized configuration files keep build tooling aligned, which de-risks onboarding. As future sprints introduce donor dashboards, hospital triage views, and integrations with Azure/AWS services, this separation lets each slice scale independently while preserving consistent UX and deployment workflows.
