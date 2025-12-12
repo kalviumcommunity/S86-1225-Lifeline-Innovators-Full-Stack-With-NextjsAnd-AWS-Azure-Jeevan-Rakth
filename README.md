@@ -41,6 +41,53 @@ jeevan-rakth/
 - Only variables prefixed with `NEXT_PUBLIC_` reach client bundles. Avoid using server secrets inside client components or hooks.
 - After editing env files, restart `npm run dev` so Next.js picks up the new values.
 
+## Containerization
+
+### Dockerfile
+
+- Located at `jeevan-rakth/Dockerfile` using the `node:20-alpine` base image to keep the runtime lightweight.
+- Installs dependencies via `npm install`, copies the full project, and runs `npm run build` to produce the optimized Next.js bundle prior to container startup.
+- Exposes port `3000` and launches the production server with `npm run start`.
+
+### Docker Compose
+
+- The root-level `docker-compose.yml` orchestrates the web app, PostgreSQL, and Redis:
+	- `app`: Builds from the Next.js Dockerfile, publishes port `3000`, and injects shared env variables (`DATABASE_URL`, `REDIS_URL`).
+	- `db`: Uses `postgres:15-alpine`, persists data to the named volume `db_data`, and mirrors port `5432` for local access.
+	- `redis`: Uses `redis:7-alpine` and maps port `6379` to the host.
+- All services join the `localnet` bridge network so they can resolve each other by service name.
+- `db_data` volume ensures Postgres retains its data across container restarts.
+
+### Running the Stack
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+Verify everything is healthy:
+
+```bash
+# list running containers
+docker ps
+
+# optional connectivity checks from the host
+psql postgres://postgres:password@localhost:5432/mydb
+redis-cli -u redis://localhost:6379 ping
+```
+
+Example `docker ps` output when all services are up:
+
+```text
+CONTAINER ID   IMAGE                  COMMAND                  STATUS          PORTS
+abc123def456   s86-1225_app           "docker-entrypoint..."   Up 2 minutes    0.0.0.0:3000->3000/tcp
+def456ghi789   postgres:15-alpine     "docker-entrypoint..."   Up 2 minutes    0.0.0.0:5432->5432/tcp
+ghi789jkl012   redis:7-alpine         "docker-entrypoint..."   Up 2 minutes    0.0.0.0:6379->6379/tcp
+```
+
+If you encounter port-binding conflicts, either stop the conflicting service or adjust the host side of the port mappings (e.g., change `3000:3000` to `3100:3000`). Slow builds typically improve after the initial image pull because subsequent runs reuse cached layers.
+
 ## Reflection
 
 We adopted the Next.js App Router layout to keep routing, layouts, and data-fetching logic co-located. Shared UI and utility logic live in `components` and `lib`, letting parallel squads extend the design system or connect to additional services without touching core pages. Centralized configuration files keep build tooling aligned, which de-risks onboarding. As future sprints introduce donor dashboards, hospital triage views, and integrations with Azure/AWS services, this separation lets each slice scale independently while preserving consistent UX and deployment workflows.
@@ -91,12 +138,6 @@ Reviewers walk through this list before hitting approve:
 ## Workflow Reflection
 
 This workflow keeps velocity high without sacrificing quality. Consistent branch naming signals intent at a glance and lets automations (boards, CI, deployments) target patterns reliably. The shared PR template standardises author context so reviewers spend less time deciphering change scope. The checklist anchors quality gates around linting, testing, and security, keeping `main` deployable. Branch protection rules enforce review discipline and force teams to reconcile latest changes before merge, preventing regressions and encouraging continuous collaboration.
-
-## PR Snapshot
-
-![Checks passing on Jeevan Rakth PR](jeevan-rakth/public/screenshots/pr-checks.png)
-
-> Update `public/screenshots/pr-checks.png` with a real pull request screenshot showing required checks passing or reviewer comments resolved to keep this artifact relevant.
 
 
 ## **Tooling Setup & Changes**
@@ -157,7 +198,3 @@ git commit -m "chore: add ESLint/Prettier/Husky and enable strict TypeScript"
 ```
 
 If lint-staged fixes issues automatically, they will be re-added to the commit. If non-fixable errors exist, fix and re-run the commit.
-
-
-<!-- ## preview Screenshot -->
-<!-- ![alt text](image.png) -->
