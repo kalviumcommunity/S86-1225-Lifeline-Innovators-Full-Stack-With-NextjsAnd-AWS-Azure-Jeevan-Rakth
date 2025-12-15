@@ -102,30 +102,20 @@ If you encounter port-binding conflicts, either stop the conflicting service or 
 ### Prisma Schema Excerpt
 
 ```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
 model User {
-	id        Int      @id @default(autoincrement())
-	email     String   @unique
-	memberships TeamMember[]
-	ownedProjects Project[] @relation("ProjectOwner")
-}
-
-model Project {
-	id      Int    @id @default(autoincrement())
-	code    String @unique
-	team    Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
-	owner   User?  @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-	tasks   Task[]
-}
-
-model Task {
-	id        Int          @id @default(autoincrement())
-	status    TaskStatus   @default(BACKLOG)
-	priority  TaskPriority @default(MEDIUM)
-	project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-	assignee  User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-
-	@@unique([projectId, title])
-	@@index([projectId, status])
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
 }
 ```
 
@@ -193,9 +183,6 @@ We adopted the Next.js App Router layout to keep routing, layouts, and data-fetc
 - Documentation updates: `docs/<update-name>` such as `docs/update-readme`.
 - Always branch from the latest `main`, keep branches focused on a single concern, and rebase or merge `main` before opening a PR to resolve drift early.
 
-## Pull Request Template
-
-We document every change using [.github/pull_request_template.md](.github/pull_request_template.md). Copy its structure into each PR description:
 
 ```
 ## Summary
