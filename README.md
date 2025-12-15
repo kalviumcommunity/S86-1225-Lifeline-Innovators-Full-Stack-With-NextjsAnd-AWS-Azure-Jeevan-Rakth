@@ -32,6 +32,39 @@ jeevan-rakth/
 2. Start the development server: `npm run dev`
 3. Open the app at `http://localhost:3000`
 4. Run the linter before committing: `npm run lint`
+5. Review extended migration + seeding docs: see [jeevan-rakth/README.md](jeevan-rakth/README.md)
+
+## Database & Prisma Workflow
+
+- Apply schema changes while developing locally:
+
+	```bash
+	cd jeevan-rakth
+	npx prisma migrate dev --name init_schema
+	```
+
+- Reset the database (drops & reapplies all migrations) when you need a clean slate:
+
+	```bash
+	npx prisma migrate reset
+	```
+
+- Seed baseline data (idempotent `upsert` logic keeps records unique):
+
+	```bash
+	npx prisma db seed
+	```
+
+- Inspect or tweak generated SQL under `prisma/migrations/**/migration.sql` before promoting to staging/production.
+- Validate results visually or via SQL after seeding:
+
+	```bash
+	npx prisma studio
+	```
+
+- Production notes: back up the database before deploying migrations, run `npx prisma migrate deploy` in CI/CD, and test on staging prior to touching live data.
+
+For detailed output samples, rollback commands, and data-protection practices, refer to [jeevan-rakth/README.md](jeevan-rakth/README.md).
 
 ## Environment Variables
 

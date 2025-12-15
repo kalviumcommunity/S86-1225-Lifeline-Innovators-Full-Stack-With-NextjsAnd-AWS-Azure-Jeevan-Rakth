@@ -3,7 +3,6 @@ import { PrismaClient, TaskPriority, TaskStatus } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  // Seed baseline users.
   const alice = await prisma.user.upsert({
     where: { email: "alice@example.com" },
     update: {},
@@ -22,7 +21,6 @@ async function main() {
     },
   });
 
-  // Seed team and memberships.
   const team = await prisma.team.upsert({
     where: { name: "Rapid Responders" },
     update: {},
@@ -38,7 +36,6 @@ async function main() {
     },
   });
 
-  // Seed project for team.
   const project = await prisma.project.upsert({
     where: { code: "JR-HOSP-ALERT" },
     update: {
@@ -53,7 +50,6 @@ async function main() {
     },
   });
 
-  // Seed tasks with comments.
   const intakeTask = await prisma.task.upsert({
     where: {
       projectId_title: {
@@ -103,11 +99,11 @@ async function main() {
     },
   });
 
-  // Provide simple output for verification.
   const taskCount = await prisma.task.count({
     where: { projectId: project.id },
   });
-  console.log(`Seeded ${taskCount} tasks for project ${project.code}.`);
+
+  console.log(`Seeded ${taskCount} tasks for project ${project.code}`);
   console.log(`Intake task id: ${intakeTask.id}`);
 }
 
