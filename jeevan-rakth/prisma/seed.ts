@@ -3,21 +3,21 @@ import { PrismaClient, TaskPriority, TaskStatus } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
-  const alice = await prisma.user.upsert({
-    where: { email: "alice@example.com" },
+  const mukesh = await prisma.user.upsert({
+    where: { email: "mukesh@gmail.com" },
     update: {},
     create: {
-      name: "Alice ProjectLead",
-      email: "alice@example.com",
+      name: "Mukesh",
+      email: "mukesh@gmail.com",
     },
   });
 
-  const bob = await prisma.user.upsert({
-    where: { email: "bob@example.com" },
+  const maxxi = await prisma.user.upsert({
+    where: { email: "maxxi@example.com" },
     update: {},
     create: {
-      name: "Bob Engineer",
-      email: "bob@example.com",
+      name: "maxxi Engineer",
+      email: "maxxi@example.com",
     },
   });
 
@@ -26,11 +26,11 @@ async function main() {
     update: {},
     create: {
       name: "Rapid Responders",
-      owner: { connect: { id: alice.id } },
+      owner: { connect: { id: mukesh.id } },
       members: {
         create: [
-          { user: { connect: { id: alice.id } }, role: "owner" },
-          { user: { connect: { id: bob.id } }, role: "responder" },
+          { user: { connect: { id: mukesh.id } }, role: "owner" },
+          { user: { connect: { id: maxxi.id } }, role: "responder" },
         ],
       },
     },
@@ -45,9 +45,33 @@ async function main() {
       name: "Hospital Alert Automation",
       code: "JR-HOSP-ALERT",
       summary: "Automates triage requests from hospitals to responders.",
-      owner: { connect: { id: alice.id } },
+      owner: { connect: { id: mukesh.id } },
       team: { connect: { id: team.id } },
     },
+  });
+
+  await prisma.product.createMany({
+    data: [
+      {
+        name: "Universal Donor Kit",
+        sku: "JR-DONOR-KIT-01",
+        price: 49.99,
+        stock: 25,
+      },
+      {
+        name: "Rapid Plasma Pack",
+        sku: "JR-PLASMA-PACK-02",
+        price: 79.49,
+        stock: 15,
+      },
+      {
+        name: "Platelet Preservation Unit",
+        sku: "JR-PLATELET-03",
+        price: 65.75,
+        stock: 10,
+      },
+    ],
+    skipDuplicates: true,
   });
 
   const intakeTask = await prisma.task.upsert({
@@ -65,11 +89,11 @@ async function main() {
       status: TaskStatus.IN_PROGRESS,
       priority: TaskPriority.HIGH,
       project: { connect: { id: project.id } },
-      assignee: { connect: { id: alice.id } },
+      assignee: { connect: { id: mukesh.id } },
       comments: {
         create: {
           body: "Align form fields with regulatory reporting requirements.",
-          author: { connect: { id: alice.id } },
+          author: { connect: { id: mukesh.id } },
         },
       },
     },
@@ -89,11 +113,11 @@ async function main() {
       status: TaskStatus.BACKLOG,
       priority: TaskPriority.MEDIUM,
       project: { connect: { id: project.id } },
-      assignee: { connect: { id: bob.id } },
+      assignee: { connect: { id: maxxi.id } },
       comments: {
         create: {
           body: "Use WebSocket updates from the notification service.",
-          author: { connect: { id: bob.id } },
+          author: { connect: { id: maxxi.id } },
         },
       },
     },
@@ -105,6 +129,7 @@ async function main() {
 
   console.log(`Seeded ${taskCount} tasks for project ${project.code}`);
   console.log(`Intake task id: ${intakeTask.id}`);
+  console.log("Product catalog ready for order workflows.");
 }
 
 main()

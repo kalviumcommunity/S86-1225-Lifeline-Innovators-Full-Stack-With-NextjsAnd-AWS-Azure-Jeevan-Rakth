@@ -1,4 +1,4 @@
-# Prisma Database Migrations & Seeding
+# Prisma Database Migrations, Transactions & Performance
 
 ## Prerequisites
 
@@ -24,10 +24,10 @@
 
 	Update `.env` with a valid `DATABASE_URL` (PostgreSQL) and any other required secrets before proceeding.
 
-3. Apply the initial migration and generate the Prisma Client:
+3. Apply the tracked migrations and generate the Prisma Client:
 
 	```bash
-	npx prisma migrate dev --name init_schema
+	npx prisma migrate dev
 	```
 
 4. Seed baseline data so the UI has meaningful content:
@@ -63,7 +63,7 @@
 	 Prisma Client was successfully generated in ./node_modules/.prisma/client
 	 ```
 
-3. Review the generated SQL in `prisma/migrations/<timestamp>_init_schema/migration.sql` to understand the exact DDL against your database.
+3. Review the generated SQL in `prisma/migrations/<timestamp>_init_schema/migration.sql` to understand the exact DDL against your database. The order workflow upgrade lives in [prisma/migrations/20251216094500_add_order_workflows/migration.sql](prisma/migrations/20251216094500_add_order_workflows/migration.sql).
 
 ## Evolving the Schema
 
