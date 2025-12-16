@@ -33,6 +33,7 @@ jeevan-rakth/
 3. Open the app at `http://localhost:3000`
 4. Run the linter before committing: `npm run lint`
 5. Review extended migration + seeding docs: see [jeevan-rakth/README.md](jeevan-rakth/README.md)
+6. Inspect performance notes and query logs in [jeevan-rakth/docs/perf-logs](jeevan-rakth/docs/perf-logs)
 
 ## Database & Prisma Workflow
 
@@ -40,7 +41,7 @@ jeevan-rakth/
 
 	```bash
 	cd jeevan-rakth
-	npx prisma migrate dev --name init_schema
+	npx prisma migrate dev
 	```
 
 - Reset the database (drops & reapplies all migrations) when you need a clean slate:
@@ -55,16 +56,24 @@ jeevan-rakth/
 	npx prisma db seed
 	```
 
-- Inspect or tweak generated SQL under `prisma/migrations/**/migration.sql` before promoting to staging/production.
+- Inspect or tweak generated SQL under `prisma/migrations/**/migration.sql` before promoting to staging/production. The order workflow upgrade lives in [jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql](jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql).
 - Validate results visually or via SQL after seeding:
 
 	```bash
 	npx prisma studio
 	```
 
-- Production notes: back up the database before deploying migrations, run `npx prisma migrate deploy` in CI/CD, and test on staging prior to touching live data.
+- Production notes: back up the database before deploying migrations, run `npx prisma migrate deploy` in CI/CD, and test on staging prior to touching live data. Enable `DEBUG=prisma:query npm run dev` temporarily when benchmarking queries and compare timings using [jeevan-rakth/docs/perf-logs](jeevan-rakth/docs/perf-logs).
 
 For detailed output samples, rollback commands, and data-protection practices, refer to [jeevan-rakth/README.md](jeevan-rakth/README.md).
+
+## Order Workflow Overview
+
+- Transactional API in [jeevan-rakth/src/app/api/orders/route.ts](jeevan-rakth/src/app/api/orders/route.ts) wraps order creation, inventory decrement, and payment capture inside a single Prisma `$transaction`.
+- Rollback testing is supported by sending `simulateFailure: true` in the POST payload, which raises an intentional error so the transaction verifies atomicity.
+- Commerce-specific models and indexes live in [jeevan-rakth/prisma/schema.prisma](jeevan-rakth/prisma/schema.prisma) with the migration scripted under [jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql](jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql).
+- Performance evidence comparing sequential scan vs indexed queries is stored at [jeevan-rakth/docs/perf-logs/orders-before-indexes.log](jeevan-rakth/docs/perf-logs/orders-before-indexes.log) and [jeevan-rakth/docs/perf-logs/orders-after-indexes.log](jeevan-rakth/docs/perf-logs/orders-after-indexes.log).
+- The GET endpoint paginates results, caps page size at 50, and selects only the fields required for dashboards to avoid over-fetching.
 
 ## Environment Variables
 
@@ -131,6 +140,9 @@ If you encounter port-binding conflicts, either stop the conflicting service or 
 - **Project** — initiatives tracked per team; optionally linked to an owner user and keyed by a unique `code` for lookup.
 - **Task** — actionable work items belonging to a project with status/priority enums, optional assignee, and composite uniqueness on `(project_id, title)` to prevent duplicates.
 - **Comment** — discussion tied to tasks, capturing author linkage and cascading deletes.
+- **Product** — catalog entries aligned to donor kits and supplies with unique `sku`, pricing, and live inventory counts.
+- **Order** — transactional records linking users to products with quantity, monetary totals, and indexed status/timestamps for dashboards.
+- **Payment** — captures settlement details per order, ensuring one-to-one linkage for audits and reconciliation.
 
 ### Prisma Schema Excerpt
 
@@ -160,6 +172,7 @@ Full definitions live in [jeevan-rakth/prisma/schema.prisma](jeevan-rakth/prisma
 - Unique constraints on `User.email`, `Project.code`, and `(Task.projectId, Task.title)` guarantee canonical identifiers for API lookups.
 - Foreign keys cascade deletes for dependent records (e.g., tasks drop when a project goes away) while `Project.ownerId` and `Task.assigneeId` use `ON DELETE SET NULL` to preserve history if a user departs.
 - Composite indexes on high-frequency query paths (`Task.projectId` + `status`, `Project.teamId` + `status`) keep dashboards responsive.
+- Commerce indexes span `Order.userId`, `Order.status`, `Order.userId` + `createdAt`, and `Product.name`, reducing sequential scans for order histories and search suggestions.
 - Join table `TeamMember` enforces uniqueness across `(team_id, user_id)` to stop duplicate memberships and indexes `user_id` for reverse lookups.
 
 ### Normalization Notes
@@ -173,7 +186,7 @@ Full definitions live in [jeevan-rakth/prisma/schema.prisma](jeevan-rakth/prisma
 Run these commands from `jeevan-rakth` after installing Prisma (`npm install prisma @prisma/client`):
 
 ```bash
-npx prisma migrate dev --name init_schema
+npx prisma migrate dev
 npx prisma db seed
 npx prisma studio
 ```
