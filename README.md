@@ -34,6 +34,7 @@ jeevan-rakth/
 4. Run the linter before committing: `npm run lint`
 5. Review extended migration + seeding docs: see [jeevan-rakth/README.md](jeevan-rakth/README.md)
 6. Inspect performance notes and query logs in [jeevan-rakth/docs/perf-logs](jeevan-rakth/docs/perf-logs)
+7. Review API reference & sample payloads in the section below when integrating clients.
 
 ## Database & Prisma Workflow
 
@@ -75,9 +76,100 @@ For detailed output samples, rollback commands, and data-protection practices, r
 - Performance evidence comparing sequential scan vs indexed queries is stored at [jeevan-rakth/docs/perf-logs/orders-before-indexes.log](jeevan-rakth/docs/perf-logs/orders-before-indexes.log) and [jeevan-rakth/docs/perf-logs/orders-after-indexes.log](jeevan-rakth/docs/perf-logs/orders-after-indexes.log).
 - The GET endpoint paginates results, caps page size at 50, and selects only the fields required for dashboards to avoid over-fetching.
 
-## Environment Variables
+## API Route Reference
 
-- Copy `.env.example` to `.env.local` and fill in real credentials; keep `.env.local` untracked so secrets stay off Git.
+- `/api/orders`
+	- `GET`: Paginated order listing with `skip`, `take`, `status`, and `userId` filters.
+	- `POST`: Transactional create that decrements inventory and logs payments.
+- `/api/users`
+	- `GET`: Lists users with `page` and `limit` pagination.
+	- `POST`: Creates a user enforcing unique email constraints.
+- `/api/users/:id`
+	- `GET`: Fetches a single user with owned teams, projects, tasks, and orders.
+	- `PUT`: Updates profile attributes while handling unique email conflicts.
+	- `DELETE`: Removes a user and related membership records.
+
+## HTTP Semantics
+
+- **Status codes**: `200` for successful reads, `201` for resource creation, `204` for deletions with no body.
+- **Client errors**: `400` for validation or missing fields, `404` for not found, `409` for unique constraint violations, `418` for intentional rollback scenarios.
+- **Server errors**: `500` indicates unexpected failures; logs capture stack traces for triage.
+- **Pagination**: `/api/orders` uses `skip`/`take` with a 50-row cap; `/api/users` uses `page`/`limit` defaulting to 1/10.
+- **Filtering**: `/api/orders` consumes `status` strings and numeric `userId` for targeted dashboards.
+
+## Sample API Calls
+
+Create an order and capture payment in one request:
+
+```bash
+curl -X POST http://localhost:3000/api/orders \
+	-H "Content-Type: application/json" \
+	-d '{
+				"userId": 1,
+				"productId": 2,
+				"quantity": 1,
+				"paymentProvider": "INTERNAL_LEDGER",
+				"paymentReference": "QA-ORDER-001"
+			}'
+```
+
+Simulate a rollback to confirm atomicity:
+
+```bash
+curl -X POST http://localhost:3000/api/orders \
+	-H "Content-Type: application/json" \
+	-d '{
+				"userId": 1,
+				"productId": 2,
+				"quantity": 1,
+				"simulateFailure": true
+			}'
+```
+
+Page through shipped orders:
+
+```bash
+curl "http://localhost:3000/api/orders?skip=0&take=5&status=SHIPPED"
+```
+
+List users on page two:
+
+```bash
+curl "http://localhost:3000/api/users?page=2&limit=5"
+```
+
+Handle duplicate emails gracefully:
+
+```bash
+curl -X POST http://localhost:3000/api/users \
+	-H "Content-Type: application/json" \
+	-d '{ "name": "Alice", "email": "alice@example.com" }'
+```
+
+Conflict response:
+
+```json
+{
+	"error": "Email already exists"
+}
+```
+
+## Error Semantics & Observability
+
+- Structured error payloads (`{ error: "..." }`) make client handling predictable.
+- Known Prisma error codes (`P2002`, `P2025`) map to meaningful HTTP responses.
+- Transaction rollbacks triggered via `simulateFailure` surface `418` status to differentiate expected QA behaviour from real incidents.
+- `console.error` logging inside route handlers feeds platform logs, aiding alerting and root-cause analysis.
+
+## Naming Reflection
+
+Consistent resource naming (`/api/orders`, `/api/users/:id`) and camelCase payload keys reduce integration bugs, since clients can reuse models across endpoints. Shared pagination semantics—either offset-based (`skip`/`take`) or page-based (`page`/`limit`)—let SDKs encapsulate listing logic. Aligning status labels (e.g., `PLACED`, `CAPTURED`) between APIs and database rows avoids translation layers, simplifying future service decomposition.
+
+## API Test Evidence
+
+![Postman orders run](https://dummyimage.com/1280x720/0f172a/ffffff.png&text=Postman+Orders+201)
+
+![Postman users listing](https://dummyimage.com/1280x720/0f172a/ffffff.png&text=Postman+Users+200)
 - `DATABASE_URL` is server-only; reference it with `process.env.DATABASE_URL` inside server components, route handlers, or backend utilities.
 - `NEXT_PUBLIC_API_BASE_URL` is safe for the browser; import it in client components with `process.env.NEXT_PUBLIC_API_BASE_URL` for fetch calls.
 - Only variables prefixed with `NEXT_PUBLIC_` reach client bundles. Avoid using server secrets inside client components or hooks.

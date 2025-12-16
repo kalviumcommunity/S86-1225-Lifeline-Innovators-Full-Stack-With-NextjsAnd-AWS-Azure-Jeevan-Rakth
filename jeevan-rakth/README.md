@@ -140,3 +140,102 @@
 - Run new migrations in staging and validate business flows with seeded data prior to production rollout.
 - Use feature flags or maintenance windows when migrations include breaking alterations, and communicate rollback plans to the operations team.
 
+## API Route Reference
+
+- `/api/orders`
+	- `GET`: Returns paginated orders with optional `skip`, `take`, `status`, and `userId` filters.
+	- `POST`: Creates an order, decrements inventory, and records a payment inside a transaction.
+- `/api/users`
+	- `GET`: Lists users with `page` and `limit` pagination.
+	- `POST`: Creates a user enforcing unique email constraints.
+- `/api/users/:id`
+	- `GET`: Fetches a single user with related teams, projects, tasks, and orders.
+	- `PUT`: Updates core profile fields with conflict detection.
+	- `DELETE`: Removes a user and cascaded relations.
+
+## HTTP Semantics
+
+- **Success codes**: `200` for reads, `201` for creates, `204` for deletions without body.
+- **Client errors**: `400` on validation failures, `404` when records are missing, `409` on unique constraint conflicts, `418` when rollback simulations are triggered.
+- **Server errors**: `500` for unexpected exceptions. All handlers log failures via `console.error` to support observability.
+- **Pagination parameters**: `GET /api/orders` accepts `skip` (offset) and `take` (page size capped at 50); `GET /api/users` uses `page` and `limit` with defaults of `1` and `10` respectively.
+- **Filtering**: `GET /api/orders` supports `status` (string status) and `userId` (numeric) filters that combine with pagination.
+
+## Sample Requests
+
+Create an order with transactional rollback testing:
+
+```bash
+curl -X POST http://localhost:3000/api/orders \
+	-H "Content-Type: application/json" \
+	-d '{
+				"userId": 1,
+				"productId": 2,
+				"quantity": 1,
+				"paymentProvider": "INTERNAL_LEDGER",
+				"paymentReference": "QA-ORDER-001"
+			}'
+```
+
+Sample response:
+
+```json
+{
+	"message": "Order placed successfully",
+	"order": {
+		"id": 42,
+		"status": "PLACED",
+		"total": "79.49",
+		"createdAt": "2025-12-16T12:41:09.125Z"
+	},
+	"payment": {
+		"id": 42,
+		"status": "CAPTURED"
+	}
+}
+```
+
+Paginate orders while filtering for shipped statuses:
+
+```bash
+curl "http://localhost:3000/api/orders?skip=0&take=5&status=SHIPPED"
+```
+
+List users using page-based pagination:
+
+```bash
+curl "http://localhost:3000/api/users?page=2&limit=5"
+```
+
+Handle uniqueness conflicts gracefully:
+
+```bash
+curl -X POST http://localhost:3000/api/users \
+	-H "Content-Type: application/json" \
+	-d '{ "name": "Alice", "email": "alice@example.com" }'
+```
+
+Conflict response:
+
+```json
+{
+	"error": "Email already exists"
+}
+```
+
+## Error Semantics
+
+- Validation failures return descriptive messages alongside the HTTP status to make debugging straightforward for API consumers.
+- Prisma error codes (`P2002`, `P2025`) are translated into human-readable responses so clients do not need database knowledge.
+- Transaction rollbacks triggered by `simulateFailure` return `418` to clearly differentiate expected test flows from real incidents.
+
+## Naming Reflection
+
+Consistent resource naming (`/api/orders`, `/api/users/:id`) and parameter casing (`userId`, `paymentProvider`) reduce integration errors because clients can predict key names across endpoints. Aligning response envelopes (`{ message, data }` or `{ error }`) keeps frontend adapters and mobile clients simple, while shared terminology around inventory, orders, and payments prevents domain drift between teams.
+
+## API Test Evidence
+
+![Postman orders run](https://dummyimage.com/1280x720/0f172a/ffffff.png&text=Postman+Orders+201)
+
+![Postman users listing](https://dummyimage.com/1280x720/0f172a/ffffff.png&text=Postman+Users+200)
+
