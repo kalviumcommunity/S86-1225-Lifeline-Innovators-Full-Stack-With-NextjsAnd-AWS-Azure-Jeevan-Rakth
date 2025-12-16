@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  ERROR_CODES,
+  errorResponse,
+  successResponse,
+} from "@/lib/responseHandler";
 
 // GET /api/users/:id → get single user
 export async function GET(
@@ -19,16 +23,19 @@ export async function GET(
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return errorResponse("User not found", {
+        status: 404,
+        code: ERROR_CODES.USER_NOT_FOUND,
+      });
     }
 
-    return NextResponse.json(user, { status: 200 });
+    return successResponse("User retrieved successfully", user);
   } catch (error) {
     console.error("Failed to fetch user:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch user" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch user", {
+      status: 500,
+      code: ERROR_CODES.USERS_FETCH_FAILED,
+    });
   }
 }
 
@@ -41,10 +48,10 @@ export async function PUT(
     const body = await req.json();
 
     if (!body.name || !body.email) {
-      return NextResponse.json(
-        { error: "Name and email are required" },
-        { status: 400 }
-      );
+      return errorResponse("Name and email are required", {
+        status: 400,
+        code: ERROR_CODES.VALIDATION_ERROR,
+      });
     }
 
     const updatedUser = await prisma.user.update({
@@ -55,7 +62,7 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(updatedUser, { status: 200 });
+    return successResponse("User updated successfully", updatedUser);
   } catch (error) {
     console.error("Failed to update user:", error);
 
@@ -63,23 +70,26 @@ export async function PUT(
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return errorResponse("User not found", {
+        status: 404,
+        code: ERROR_CODES.USER_NOT_FOUND,
+      });
     }
 
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return NextResponse.json(
-        { error: "Email already exists" },
-        { status: 409 }
-      );
+      return errorResponse("Email already exists", {
+        status: 409,
+        code: ERROR_CODES.EMAIL_CONFLICT,
+      });
     }
 
-    return NextResponse.json(
-      { error: "Failed to update user" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to update user", {
+      status: 500,
+      code: ERROR_CODES.USERS_FETCH_FAILED,
+    });
   }
 }
 
@@ -93,10 +103,9 @@ export async function DELETE(
       where: { id: Number(params.id) },
     });
 
-    return NextResponse.json(
-      { message: "User deleted successfully" },
-      { status: 200 }
-    );
+    return successResponse("User deleted successfully", {
+      id: Number(params.id),
+    });
   } catch (error) {
     console.error("Failed to delete user:", error);
 
@@ -104,12 +113,15 @@ export async function DELETE(
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return errorResponse("User not found", {
+        status: 404,
+        code: ERROR_CODES.USER_NOT_FOUND,
+      });
     }
 
-    return NextResponse.json(
-      { error: "Failed to delete user" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to delete user", {
+      status: 500,
+      code: ERROR_CODES.USERS_FETCH_FAILED,
+    });
   }
 }

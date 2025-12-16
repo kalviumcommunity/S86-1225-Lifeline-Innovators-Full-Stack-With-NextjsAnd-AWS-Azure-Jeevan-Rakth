@@ -1,5 +1,9 @@
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  ERROR_CODES,
+  errorResponse,
+  successResponse,
+} from "@/lib/responseHandler";
 import { placeOrderTransaction } from "@/prisma/transactions";
 
 const MAX_PAGE_SIZE = 50;
@@ -38,13 +42,19 @@ export async function GET(req: Request) {
       prisma.order.count({ where }),
     ]);
 
-    return NextResponse.json({ data: orders, meta: { skip, take, total } });
+    return successResponse(
+      "Orders retrieved successfully",
+      { orders },
+      {
+        meta: { skip, take, total },
+      }
+    );
   } catch (error) {
     console.error("Failed to list orders:", error);
-    return NextResponse.json(
-      { message: "Unable to fetch orders at this time." },
-      { status: 500 }
-    );
+    return errorResponse("Unable to fetch orders at this time.", {
+      status: 500,
+      code: ERROR_CODES.ORDERS_FETCH_FAILED,
+    });
   }
 }
 
@@ -61,17 +71,17 @@ export async function POST(req: Request) {
     } = body;
 
     if (!userId || !productId) {
-      return NextResponse.json(
-        { message: "userId and productId are required." },
-        { status: 400 }
-      );
+      return errorResponse("userId and productId are required.", {
+        status: 400,
+        code: ERROR_CODES.VALIDATION_ERROR,
+      });
     }
 
     if (quantity && quantity < 1) {
-      return NextResponse.json(
-        { message: "Quantity must be at least 1." },
-        { status: 400 }
-      );
+      return errorResponse("Quantity must be at least 1.", {
+        status: 400,
+        code: ERROR_CODES.VALIDATION_ERROR,
+      });
     }
 
     const result = await placeOrderTransaction({
@@ -83,38 +93,37 @@ export async function POST(req: Request) {
       simulateFailure,
     });
 
-    return NextResponse.json(
-      { message: "Order placed successfully", ...result },
-      { status: 201 }
-    );
+    return successResponse("Order placed successfully", result, {
+      status: 201,
+    });
   } catch (error) {
     console.error("Transaction failed:", error);
 
     if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {
-      return NextResponse.json(
-        { message: "Product not found." },
-        { status: 404 }
-      );
+      return errorResponse("Product not found.", {
+        status: 404,
+        code: ERROR_CODES.PRODUCT_NOT_FOUND,
+      });
     }
     if (error instanceof Error && error.message === "INSUFFICIENT_STOCK") {
-      return NextResponse.json(
-        { message: "Insufficient product inventory." },
-        { status: 409 }
-      );
+      return errorResponse("Insufficient product inventory.", {
+        status: 409,
+        code: ERROR_CODES.INSUFFICIENT_STOCK,
+      });
     }
     if (error instanceof Error && error.message === "ROLLBACK_TEST") {
-      return NextResponse.json(
+      return errorResponse(
+        "Transaction rolled back as requested. No data was persisted.",
         {
-          message:
-            "Transaction rolled back as requested. No data was persisted.",
-        },
-        { status: 418 }
+          status: 418,
+          code: ERROR_CODES.ROLLBACK_TEST,
+        }
       );
     }
 
-    return NextResponse.json(
-      { message: "Order failed, changes rolled back." },
-      { status: 500 }
-    );
+    return errorResponse("Order failed, changes rolled back.", {
+      status: 500,
+      code: ERROR_CODES.ORDER_TRANSACTION_FAILED,
+    });
   }
 }

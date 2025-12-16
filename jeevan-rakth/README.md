@@ -161,6 +161,52 @@
 - **Pagination parameters**: `GET /api/orders` accepts `skip` (offset) and `take` (page size capped at 50); `GET /api/users` uses `page` and `limit` with defaults of `1` and `10` respectively.
 - **Filtering**: `GET /api/orders` supports `status` (string status) and `userId` (numeric) filters that combine with pagination.
 
+## Unified Response Handler
+
+- Utility: [src/lib/responseHandler.ts](src/lib/responseHandler.ts)
+- Success envelope:
+
+	```json
+	{
+		"success": true,
+		"message": "<brief description>",
+		"data": { /* payload */ },
+		"meta": { /* optional pagination */ },
+		"timestamp": "2025-12-16T10:00:00.000Z"
+	}
+	```
+
+- Error envelope:
+
+	```json
+	{
+		"success": false,
+		"message": "<human readable detail>",
+		"error": { "code": "<ERROR_CODE>", "details": { /* optional */ } },
+		"timestamp": "2025-12-16T10:00:00.000Z"
+	}
+	```
+
+- Usage examples:
+
+	```ts
+	return successResponse("Orders retrieved successfully", orders, {
+		meta: { skip, take, total },
+	});
+
+	return errorResponse("Email already exists", {
+		status: 409,
+		code: ERROR_CODES.EMAIL_CONFLICT,
+	});
+	```
+
+- Error codes: `VALIDATION_ERROR`, `PRODUCT_NOT_FOUND`, `INSUFFICIENT_STOCK`, `ROLLBACK_TEST`, `ORDERS_FETCH_FAILED`, `ORDER_TRANSACTION_FAILED`, `USERS_FETCH_FAILED`, `USER_NOT_FOUND`, `EMAIL_CONFLICT`, `UNKNOWN_ERROR`.
+- DX & observability gains:
+	- Every payload carries an ISO timestamp for log correlation.
+	- Frontends depend on a single `{ success, message, data }` schema across routes.
+	- Monitoring tools (Sentry, Datadog, Postman monitors) filter on `error.code` for alerting.
+	- New contributors learn the "API voice" once and reuse patterns in future routes.
+
 ## Sample Requests
 
 Create an order with transactional rollback testing:
@@ -181,17 +227,21 @@ Sample response:
 
 ```json
 {
+	"success": true,
 	"message": "Order placed successfully",
-	"order": {
-		"id": 42,
-		"status": "PLACED",
-		"total": "79.49",
-		"createdAt": "2025-12-16T12:41:09.125Z"
+	"data": {
+		"order": {
+			"id": 42,
+			"status": "PLACED",
+			"total": "79.49",
+			"createdAt": "2025-12-16T12:41:09.125Z"
+		},
+		"payment": {
+			"id": 42,
+			"status": "CAPTURED"
+		}
 	},
-	"payment": {
-		"id": 42,
-		"status": "CAPTURED"
-	}
+	"timestamp": "2025-12-16T12:41:09.125Z"
 }
 ```
 
@@ -219,19 +269,45 @@ Conflict response:
 
 ```json
 {
-	"error": "Email already exists"
+	"success": false,
+	"message": "Email already exists",
+	"error": { "code": "EMAIL_CONFLICT" },
+	"timestamp": "2025-12-16T12:41:09.125Z"
+}
+```
+
+Success envelope template:
+
+```json
+{
+	"success": true,
+	"message": "User created successfully",
+	"data": { "id": 12, "name": "Charlie" },
+	"timestamp": "2025-12-16T10:00:00Z"
+}
+```
+
+Error envelope template:
+
+```json
+{
+	"success": false,
+	"message": "Missing required field: name",
+	"error": { "code": "VALIDATION_ERROR" },
+	"timestamp": "2025-12-16T10:00:00Z"
 }
 ```
 
 ## Error Semantics
 
-- Validation failures return descriptive messages alongside the HTTP status to make debugging straightforward for API consumers.
-- Prisma error codes (`P2002`, `P2025`) are translated into human-readable responses so clients do not need database knowledge.
-- Transaction rollbacks triggered by `simulateFailure` return `418` to clearly differentiate expected test flows from real incidents.
+- Validation failures now emit `VALIDATION_ERROR` codes with `success: false`, helping clients branch on a single field.
+- Prisma error codes (`P2002`, `P2025`) translate to domain codes (`EMAIL_CONFLICT`, `USER_NOT_FOUND`) so clients never see raw database metadata.
+- Transaction rollbacks triggered by `simulateFailure` return HTTP `418` with `ROLLBACK_TEST`, separating QA checks from production incidents.
+- Any unhandled exception becomes `UNKNOWN_ERROR`, guaranteeing consistent payload shapes for observability.
 
 ## Naming Reflection
 
-Consistent resource naming (`/api/orders`, `/api/users/:id`) and parameter casing (`userId`, `paymentProvider`) reduce integration errors because clients can predict key names across endpoints. Aligning response envelopes (`{ message, data }` or `{ error }`) keeps frontend adapters and mobile clients simple, while shared terminology around inventory, orders, and payments prevents domain drift between teams.
+Consistent resource naming (`/api/orders`, `/api/users/:id`), payload casing (`userId`, `paymentProvider`), and the shared response voice (`success/message/data/error.code`) keep SDKs slim and prevent integration drift. When every route speaks the same format, partner teams spot regressions faster and share reusable adapters instead of duplicating parsing logic.
 
 ## API Test Evidence
 

@@ -76,7 +76,7 @@ For detailed output samples, rollback commands, and data-protection practices, r
 - Performance evidence comparing sequential scan vs indexed queries is stored at [jeevan-rakth/docs/perf-logs/orders-before-indexes.log](jeevan-rakth/docs/perf-logs/orders-before-indexes.log) and [jeevan-rakth/docs/perf-logs/orders-after-indexes.log](jeevan-rakth/docs/perf-logs/orders-after-indexes.log).
 - The GET endpoint paginates results, caps page size at 50, and selects only the fields required for dashboards to avoid over-fetching.
 
-## API Route Reference
+## API Route & Response Reference
 
 - `/api/orders`
 	- `GET`: Paginated order listing with `skip`, `take`, `status`, and `userId` filters.
@@ -97,6 +97,52 @@ For detailed output samples, rollback commands, and data-protection practices, r
 - **Pagination**: `/api/orders` uses `skip`/`take` with a 50-row cap; `/api/users` uses `page`/`limit` defaulting to 1/10.
 - **Filtering**: `/api/orders` consumes `status` strings and numeric `userId` for targeted dashboards.
 
+## Unified Response Handler
+
+- Location: [jeevan-rakth/src/lib/responseHandler.ts](jeevan-rakth/src/lib/responseHandler.ts)
+- Success envelope:
+
+	```json
+	{
+		"success": true,
+		"message": "Orders retrieved successfully",
+		"data": { "orders": [/* ... */] },
+		"meta": { "skip": 0, "take": 10, "total": 120 },
+		"timestamp": "2025-12-16T10:00:00.000Z"
+	}
+	```
+
+- Error envelope:
+
+	```json
+	{
+		"success": false,
+		"message": "Insufficient product inventory.",
+		"error": { "code": "INSUFFICIENT_STOCK" },
+		"timestamp": "2025-12-16T10:00:00.000Z"
+	}
+	```
+
+- Usage examples:
+
+	```ts
+	return successResponse("Users fetched successfully", { users }, {
+		meta: { page, limit, totalUsers },
+	});
+
+	return errorResponse("Email already exists", {
+		status: 409,
+		code: ERROR_CODES.EMAIL_CONFLICT,
+	});
+	```
+
+- Defined error codes: `VALIDATION_ERROR`, `PRODUCT_NOT_FOUND`, `INSUFFICIENT_STOCK`, `ROLLBACK_TEST`, `ORDERS_FETCH_FAILED`, `ORDER_TRANSACTION_FAILED`, `USERS_FETCH_FAILED`, `USER_NOT_FOUND`, `EMAIL_CONFLICT`, `UNKNOWN_ERROR`.
+- Developer experience gains:
+	- Timestamps plus error codes speed up debugging and log correlation.
+	- Frontends share a single parsing path because every endpoint speaks the same schema.
+	- Monitoring stacks (Sentry, Datadog, Postman monitors) can alert on `error.code`.
+	- New teammates learn the “API voice” once and apply it across new handlers.
+
 ## Sample API Calls
 
 Create an order and capture payment in one request:
@@ -111,6 +157,28 @@ curl -X POST http://localhost:3000/api/orders \
 				"paymentProvider": "INTERNAL_LEDGER",
 				"paymentReference": "QA-ORDER-001"
 			}'
+```
+
+Sample response:
+
+```json
+{
+	"success": true,
+	"message": "Order placed successfully",
+	"data": {
+		"order": {
+			"id": 42,
+			"status": "PLACED",
+			"total": "79.49",
+			"createdAt": "2025-12-16T12:41:09.125Z"
+		},
+		"payment": {
+			"id": 42,
+			"status": "CAPTURED"
+		}
+	},
+	"timestamp": "2025-12-16T12:41:09.125Z"
+}
 ```
 
 Simulate a rollback to confirm atomicity:
@@ -150,7 +218,32 @@ Conflict response:
 
 ```json
 {
-	"error": "Email already exists"
+	"success": false,
+	"message": "Email already exists",
+	"error": { "code": "EMAIL_CONFLICT" },
+	"timestamp": "2025-12-16T12:41:09.125Z"
+}
+```
+
+Success envelope template:
+
+```json
+{
+	"success": true,
+	"message": "User created successfully",
+	"data": { "id": 12, "name": "Charlie" },
+	"timestamp": "2025-12-16T10:00:00Z"
+}
+```
+
+Error envelope template:
+
+```json
+{
+	"success": false,
+	"message": "Missing required field: name",
+	"error": { "code": "VALIDATION_ERROR" },
+	"timestamp": "2025-12-16T10:00:00Z"
 }
 ```
 

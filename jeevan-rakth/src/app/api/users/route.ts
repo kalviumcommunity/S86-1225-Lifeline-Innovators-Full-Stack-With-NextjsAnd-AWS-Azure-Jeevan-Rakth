@@ -1,6 +1,10 @@
 import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  ERROR_CODES,
+  errorResponse,
+  successResponse,
+} from "@/lib/responseHandler";
 
 // GET /api/users?page=1&limit=10 → list users with pagination
 export async function GET(req: Request) {
@@ -23,21 +27,19 @@ export async function GET(req: Request) {
 
     const totalUsers = await prisma.user.count();
 
-    return NextResponse.json(
+    return successResponse(
+      "Users fetched successfully",
+      { users },
       {
-        page,
-        limit,
-        totalUsers,
-        users,
-      },
-      { status: 200 }
+        meta: { page, limit, totalUsers },
+      }
     );
   } catch (error) {
     console.error("Failed to fetch users:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch users" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch users", {
+      status: 500,
+      code: ERROR_CODES.USERS_FETCH_FAILED,
+    });
   }
 }
 
@@ -47,10 +49,10 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     if (!body.name || !body.email) {
-      return NextResponse.json(
-        { error: "Name and email are required" },
-        { status: 400 }
-      );
+      return errorResponse("Name and email are required", {
+        status: 400,
+        code: ERROR_CODES.VALIDATION_ERROR,
+      });
     }
 
     const user = await prisma.user.create({
@@ -60,7 +62,9 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(user, { status: 201 });
+    return successResponse("User created successfully", user, {
+      status: 201,
+    });
   } catch (error) {
     console.error("Failed to create user:", error);
     // Unique email constraint
@@ -68,15 +72,15 @@ export async function POST(req: Request) {
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
     ) {
-      return NextResponse.json(
-        { error: "Email already exists" },
-        { status: 409 }
-      );
+      return errorResponse("Email already exists", {
+        status: 409,
+        code: ERROR_CODES.EMAIL_CONFLICT,
+      });
     }
 
-    return NextResponse.json(
-      { error: "Failed to create user" },
-      { status: 500 }
-    );
+    return errorResponse("Failed to create user", {
+      status: 500,
+      code: ERROR_CODES.USERS_FETCH_FAILED,
+    });
   }
 }
