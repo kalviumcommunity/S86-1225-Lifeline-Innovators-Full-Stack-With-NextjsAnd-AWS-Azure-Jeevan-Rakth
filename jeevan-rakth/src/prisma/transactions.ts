@@ -19,7 +19,6 @@ export async function placeOrderTransaction({
   simulateFailure = false,
 }: PlaceOrderInput) {
   return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-    // 1️⃣ Find product
     const product = await tx.product.findUnique({
       where: { id: productId },
       select: { id: true, stock: true, price: true },
@@ -30,7 +29,6 @@ export async function placeOrderTransaction({
 
     const total = product.price * quantity;
 
-    // 2️⃣ Create order
     const order = await tx.order.create({
       data: {
         userId,
@@ -42,13 +40,11 @@ export async function placeOrderTransaction({
       select: { id: true, status: true, total: true, createdAt: true },
     });
 
-    // 3️⃣ Update product stock
     await tx.product.update({
       where: { id: productId },
       data: { stock: { decrement: quantity } },
     });
 
-    // 4️⃣ Create payment
     const payment = await tx.payment.create({
       data: {
         orderId: order.id,
@@ -61,7 +57,6 @@ export async function placeOrderTransaction({
       select: { id: true, status: true },
     });
 
-    // 5️⃣ Optional rollback for testing
     if (simulateFailure) throw new Error("ROLLBACK_TEST");
 
     return { order, payment };

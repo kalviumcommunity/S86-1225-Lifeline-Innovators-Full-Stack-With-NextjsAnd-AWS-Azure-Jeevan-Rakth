@@ -5,6 +5,7 @@ import {
   successResponse,
 } from "@/lib/responseHandler";
 import { placeOrderTransaction } from "@/prisma/transactions";
+import { orderCreateSchema } from "@/lib/schemas/orderSchema";
 
 const MAX_PAGE_SIZE = 50;
 
@@ -61,42 +62,26 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const {
-      userId,
-      productId,
-      quantity,
-      paymentProvider,
-      paymentReference,
-      simulateFailure,
-    } = body;
-
-    if (!userId || !productId) {
-      return errorResponse("userId and productId are required.", {
+    const parsed = orderCreateSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse("Validation Error", {
         status: 400,
         code: ERROR_CODES.VALIDATION_ERROR,
+        details: parsed.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
       });
     }
 
-    if (quantity && quantity < 1) {
-      return errorResponse("Quantity must be at least 1.", {
-        status: 400,
-        code: ERROR_CODES.VALIDATION_ERROR,
-      });
-    }
-
-    const result = await placeOrderTransaction({
-      userId,
-      productId,
-      quantity,
-      paymentProvider,
-      paymentReference,
-      simulateFailure,
-    });
+    const result = await placeOrderTransaction(
+      parsed.data as Parameters<typeof placeOrderTransaction>[0]
+    );
 
     return successResponse("Order placed successfully", result, {
       status: 201,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Transaction failed:", error);
 
     if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") {

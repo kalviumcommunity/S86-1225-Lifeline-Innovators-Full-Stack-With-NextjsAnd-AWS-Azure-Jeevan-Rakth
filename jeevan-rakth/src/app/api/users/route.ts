@@ -5,6 +5,7 @@ import {
   errorResponse,
   successResponse,
 } from "@/lib/responseHandler";
+import { userCreateSchema } from "@/lib/schemas/userSchema";
 
 // GET /api/users?page=1&limit=10 → list users with pagination
 export async function GET(req: Request) {
@@ -34,7 +35,7 @@ export async function GET(req: Request) {
         meta: { page, limit, totalUsers },
       }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Failed to fetch users:", error);
     return errorResponse("Failed to fetch users", {
       status: 500,
@@ -47,25 +48,24 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-
-    if (!body.name || !body.email) {
-      return errorResponse("Name and email are required", {
+    const parsed = userCreateSchema.safeParse(body);
+    if (!parsed.success) {
+      return errorResponse("Validation Error", {
         status: 400,
         code: ERROR_CODES.VALIDATION_ERROR,
+        details: parsed.error.issues.map((issue) => ({
+          field: issue.path.join("."),
+          message: issue.message,
+        })),
       });
     }
 
-    const user = await prisma.user.create({
-      data: {
-        name: body.name,
-        email: body.email,
-      },
-    });
+    const user = await prisma.user.create({ data: parsed.data });
 
     return successResponse("User created successfully", user, {
       status: 201,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Failed to create user:", error);
     // Unique email constraint
     if (
