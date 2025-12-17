@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import jwt from "jsonwebtoken";
 import {
   ERROR_CODES,
   errorResponse,
@@ -7,9 +8,26 @@ import {
 } from "@/lib/responseHandler";
 import { userCreateSchema } from "@/lib/schemas/userSchema";
 
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+
 // GET /api/users?page=1&limit=10 → list users with pagination
 export async function GET(req: Request) {
   try {
+    // verify auth token
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.split(" ")[1];
+
+    if (!token) {
+      return errorResponse("Token missing", { status: 401 });
+    }
+
+    try {
+      jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      console.warn("JWT verification failed:", err);
+      return errorResponse("Invalid or expired token", { status: 403 });
+    }
+
     const { searchParams } = new URL(req.url);
 
     const page = Number(searchParams.get("page")) || 1;
