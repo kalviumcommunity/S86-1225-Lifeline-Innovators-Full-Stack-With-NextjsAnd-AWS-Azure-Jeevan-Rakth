@@ -78,16 +78,23 @@ For detailed output samples, rollback commands, and data-protection practices, r
 
 ## API Route & Response Reference
 
-- `/api/orders`
 	- `GET`: Paginated order listing with `skip`, `take`, `status`, and `userId` filters.
 	- `POST`: Transactional create that decrements inventory and logs payments.
-- `/api/users`
 	- `GET`: Lists users with `page` and `limit` pagination.
 	- `POST`: Creates a user enforcing unique email constraints.
-- `/api/users/:id`
 	- `GET`: Fetches a single user with owned teams, projects, tasks, and orders.
 	- `PUT`: Updates profile attributes while handling unique email conflicts.
 	- `DELETE`: Removes a user and related membership records.
+
+## Authentication
+
+Authentication endpoints are implemented inside the `jeevan-rakth` app. See `jeevan-rakth/AUTH.md` for full details and examples.
+
+- `POST /api/auth/signup` — Creates a user with a bcrypt-hashed password, returns a JWT and sets an `httpOnly` `token` cookie.
+- `POST /api/auth/login` — Verifies credentials, returns a JWT and sets an `httpOnly` `token` cookie.
+- `POST /api/auth/logout` — Clears the auth cookie.
+
+Notes: inputs are validated with Zod (`src/lib/schemas`), passwords are stored hashed, and JWTs expire by default (development `JWT_SECRET` is in `jeevan-rakth/.env`).
 
 ## HTTP Semantics
 

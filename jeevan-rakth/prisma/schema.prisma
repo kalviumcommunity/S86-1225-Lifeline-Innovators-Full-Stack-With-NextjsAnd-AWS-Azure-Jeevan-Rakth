@@ -3,27 +3,26 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// Enums removed for SQLite testing; using string fields instead
 
 // =======================
 // MODELS
 // =======================
 
 model User {
-  id    Int    @id @default(autoincrement())
-  name  String
-  email String @unique
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
 
-  ownedTeams     Team[]        @relation("TeamOwner")
-  ownedProjects  Project[]
-  assignedTasks  Task[]
-  comments       Comment[]
+  ownedTeams      Team[]        @relation("TeamOwner")
+  ownedProjects   Project[]
+  assignedTasks   Task[]
+  comments        Comment[]
   teamMemberships TeamMember[]
-  orders         Order[]
+  orders          Order[]
 }
 
 model Team {
@@ -38,8 +37,8 @@ model Team {
 }
 
 model TeamMember {
-  id     Int    @id @default(autoincrement())
-  role   String
+  id   Int    @id @default(autoincrement())
+  role String
 
   userId Int
   teamId Int
@@ -66,10 +65,10 @@ model Project {
 }
 
 model Task {
-  id          Int          @id @default(autoincrement())
+  id          Int    @id @default(autoincrement())
   title       String
   description String?
-  status      String
+  password String // Added to persist hashed passwords
   priority    String
 
   projectId  Int
