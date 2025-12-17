@@ -1,4 +1,4 @@
-import { PrismaClient, TaskPriority, TaskStatus } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -71,7 +71,6 @@ async function main() {
         stock: 10,
       },
     ],
-    skipDuplicates: true,
   });
 
   const intakeTask = await prisma.task.upsert({
@@ -86,8 +85,8 @@ async function main() {
       title: "Design intake workflow",
       description:
         "Outline forms and API payload shape for hospital submissions.",
-      status: TaskStatus.IN_PROGRESS,
-      priority: TaskPriority.HIGH,
+      status: "IN_PROGRESS",
+      priority: "HIGH",
       project: { connect: { id: project.id } },
       assignee: { connect: { id: mukesh.id } },
       comments: {
@@ -110,8 +109,8 @@ async function main() {
     create: {
       title: "Prototype responder dashboard",
       description: "Realtime dashboard for donor responders on duty.",
-      status: TaskStatus.BACKLOG,
-      priority: TaskPriority.MEDIUM,
+      status: "BACKLOG",
+      priority: "MEDIUM",
       project: { connect: { id: project.id } },
       assignee: { connect: { id: maxxi.id } },
       comments: {

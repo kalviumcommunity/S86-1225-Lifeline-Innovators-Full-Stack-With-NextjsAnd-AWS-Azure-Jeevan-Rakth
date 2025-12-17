@@ -207,6 +207,40 @@
 	- Monitoring tools (Sentry, Datadog, Postman monitors) filter on `error.code` for alerting.
 	- New contributors learn the "API voice" once and reuse patterns in future routes.
 
+## Input Validation with Zod
+
+This project now validates all incoming POST/PUT request bodies using Zod schemas located in `src/lib/schemas`.
+
+- Schemas: `userSchema`, `projectSchema`, `orderSchema`.
+- Handlers return `VALIDATION_ERROR` with structured `details` containing `{ field, message }` on failure.
+
+Example (create user):
+
+```bash
+curl -X POST http://localhost:3000/api/users \
+	-H "Content-Type: application/json" \
+	-d '{"name":"A","email":"bademail"}'
+```
+
+Response:
+
+```json
+{
+	"success": false,
+	"message": "Validation Error",
+	"error": {
+		"code": "VALIDATION_ERROR",
+		"details": [
+			{ "field": "name", "message": "Name must be at least 2 characters long" },
+			{ "field": "email", "message": "Invalid email address" }
+		]
+	},
+	"timestamp": "..."
+}
+```
+
+Schemas are reusable between client and server for consistent validation.
+
 ## Sample Requests
 
 Create an order with transactional rollback testing:

@@ -3,25 +3,11 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
-// =======================
-// ENUMS
-// =======================
-
-enum TaskStatus {
-  BACKLOG
-  IN_PROGRESS
-  DONE
-}
-
-enum TaskPriority {
-  LOW
-  MEDIUM
-  HIGH
-}
+// Enums removed for SQLite testing; using string fields instead
 
 // =======================
 // MODELS
@@ -83,8 +69,8 @@ model Task {
   id          Int          @id @default(autoincrement())
   title       String
   description String?
-  status      TaskStatus
-  priority    TaskPriority
+  status      String
+  priority    String
 
   projectId  Int
   assigneeId Int
@@ -112,7 +98,7 @@ model Product {
   id        Int      @id @default(autoincrement())
   name      String
   sku       String   @unique
-  price     Decimal  @db.Decimal(10, 2)
+  price     Float
   stock     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
@@ -127,7 +113,7 @@ model Order {
   userId    Int
   productId Int
   quantity  Int      @default(1)
-  total     Decimal  @db.Decimal(10, 2)
+  total     Float
   status    String   @default("PENDING")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
@@ -144,7 +130,7 @@ model Order {
 model Payment {
   id          Int      @id @default(autoincrement())
   orderId     Int      @unique
-  amount      Decimal  @db.Decimal(10, 2)
+  amount      Float
   provider    String
   reference   String
   status      String   @default("AUTHORIZED")
