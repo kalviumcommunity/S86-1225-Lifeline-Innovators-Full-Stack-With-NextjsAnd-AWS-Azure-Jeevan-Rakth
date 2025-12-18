@@ -34,15 +34,28 @@ export async function POST(req: Request) {
         code: ERROR_CODES.USER_NOT_FOUND,
       });
 
+    if (!user.password)
+      return errorResponse("Invalid credentials", { status: 401 });
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid)
       return errorResponse("Invalid credentials", { status: 401 });
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+    const tokenPayload = {
+      id: user.id,
+      email: user.email,
+      role: user.role ?? "user",
+    };
+    const token = jwt.sign(tokenPayload, JWT_SECRET, {
       expiresIn: "1h",
     });
 
-    const safeUser = { id: user.id, name: user.name, email: user.email };
+    const safeUser = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role ?? "user",
+    };
 
     const res = successResponse("Login successful", { user: safeUser, token });
     res.cookies.set("token", token, {

@@ -51,7 +51,7 @@ jeevan-rakth/
 	npx prisma migrate reset
 	```
 
-- Seed baseline data (idempotent `upsert` logic keeps records unique):
+- Clear all tables so you can reseed from scratch during local development:
 
 	```bash
 	npx prisma db seed
@@ -95,6 +95,12 @@ Authentication endpoints are implemented inside the `jeevan-rakth` app. See `jee
 - `POST /api/auth/logout` — Clears the auth cookie.
 
 Notes: inputs are validated with Zod (`src/lib/schemas`), passwords are stored hashed, and JWTs expire by default (development `JWT_SECRET` is in `jeevan-rakth/.env`).
+
+## Authorization
+
+- Middleware lives at [jeevan-rakth/src/app/middleware.ts](jeevan-rakth/src/app/middleware.ts) and validates JWTs for `/api/admin` and `/api/users`.
+- Tokens now carry `id`, `email`, and `role`; admin-only routes require `role === "admin"` while other protected routes accept any authenticated user.
+- Downstream handlers can read `x-user-email` and `x-user-role` headers injected by the middleware for auditing or fine-grained checks.
 
 ## HTTP Semantics
 
@@ -397,7 +403,7 @@ The following migration(s) have been applied:
 Seeded 2 tasks for project JR-HOSP-ALERT.
 ```
 
-Open the interactive dashboard with `npx prisma studio` to inspect seeded users, teams, projects, tasks, and comments. The seed script at `prisma/seed.ts` inserts a small collaboration scenario (lead + responder, two tasks, sample comments) so UI work immediately has reference data.
+Open the interactive dashboard with `npx prisma studio` to confirm the database is empty or to review any data you add manually after running the seed wipe.
 
 ### Query Patterns and Scalability
 
