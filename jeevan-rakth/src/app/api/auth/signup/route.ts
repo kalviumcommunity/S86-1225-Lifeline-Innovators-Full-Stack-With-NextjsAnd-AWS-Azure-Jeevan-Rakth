@@ -41,18 +41,20 @@ export async function POST(req: Request) {
       data: { name, email, password: hashedPassword },
     });
 
-    const token = jwt.sign(
-      { id: newUser.id, email: newUser.email },
-      JWT_SECRET,
-      {
-        expiresIn: "1h",
-      }
-    );
+    const tokenPayload = {
+      id: newUser.id,
+      email: newUser.email,
+      role: newUser.role ?? "user",
+    };
+    const token = jwt.sign(tokenPayload, JWT_SECRET, {
+      expiresIn: "1h",
+    });
 
     const safeUser = {
       id: newUser.id,
       name: newUser.name,
       email: newUser.email,
+      role: newUser.role ?? "user",
     };
 
     const res = successResponse(

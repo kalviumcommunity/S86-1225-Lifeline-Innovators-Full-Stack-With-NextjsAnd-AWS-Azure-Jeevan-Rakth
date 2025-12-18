@@ -8,16 +8,33 @@ datasource db {
 }
 
 // =======================
+// ENUMS
+// =======================
+
+enum TaskStatus {
+  BACKLOG
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+// =======================
 // MODELS
 // =======================
 
 model User {
-  id       Int    @id @default(autoincrement())
+  id       Int     @id @default(autoincrement())
   name     String
-  email    String @unique
-  password String
+  email    String  @unique
+  password String?
+  role     String  @default("user")
 
-  ownedTeams      Team[]        @relation("TeamOwner")
+  ownedTeams      Team[]       @relation("TeamOwner")
   ownedProjects   Project[]
   assignedTasks   Task[]
   comments        Comment[]
@@ -50,9 +67,9 @@ model TeamMember {
 }
 
 model Project {
-  id      Int    @id @default(autoincrement())
+  id      Int     @id @default(autoincrement())
   name    String
-  code    String @unique
+  code    String  @unique
   summary String?
 
   ownerId Int
@@ -65,11 +82,11 @@ model Project {
 }
 
 model Task {
-  id          Int    @id @default(autoincrement())
+  id          Int          @id @default(autoincrement())
   title       String
   description String?
-  password String // Added to persist hashed passwords
-  priority    String
+  status      TaskStatus
+  priority    TaskPriority
 
   projectId  Int
   assigneeId Int
@@ -97,7 +114,7 @@ model Product {
   id        Int      @id @default(autoincrement())
   name      String
   sku       String   @unique
-  price     Float
+  price     Decimal  @db.Decimal(10, 2)
   stock     Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
@@ -112,13 +129,13 @@ model Order {
   userId    Int
   productId Int
   quantity  Int      @default(1)
-  total     Float
+  total     Decimal  @db.Decimal(10, 2)
   status    String   @default("PENDING")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt()
 
-  user    User    @relation(fields: [userId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  user    User     @relation(fields: [userId], references: [id])
+  product Product  @relation(fields: [productId], references: [id])
   payment Payment?
 
   @@index([userId])
@@ -129,7 +146,7 @@ model Order {
 model Payment {
   id          Int      @id @default(autoincrement())
   orderId     Int      @unique
-  amount      Float
+  amount      Decimal  @db.Decimal(10, 2)
   provider    String
   reference   String
   status      String   @default("AUTHORIZED")
