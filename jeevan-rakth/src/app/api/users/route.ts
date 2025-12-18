@@ -7,6 +7,7 @@ import {
   successResponse,
 } from "@/lib/responseHandler";
 import { userCreateSchema } from "@/lib/schemas/userSchema";
+import { handleError } from "@/lib/errorHandler";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
@@ -54,8 +55,7 @@ export async function GET(req: Request) {
       }
     );
   } catch (error: unknown) {
-    console.error("Failed to fetch users:", error);
-    return errorResponse("Failed to fetch users", {
+    return handleError(error, "GET /api/users", {
       status: 500,
       code: ERROR_CODES.USERS_FETCH_FAILED,
     });
@@ -84,7 +84,6 @@ export async function POST(req: Request) {
       status: 201,
     });
   } catch (error: unknown) {
-    console.error("Failed to create user:", error);
     // Unique email constraint
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -96,7 +95,7 @@ export async function POST(req: Request) {
       });
     }
 
-    return errorResponse("Failed to create user", {
+    return handleError(error, "POST /api/users", {
       status: 500,
       code: ERROR_CODES.USERS_FETCH_FAILED,
     });
