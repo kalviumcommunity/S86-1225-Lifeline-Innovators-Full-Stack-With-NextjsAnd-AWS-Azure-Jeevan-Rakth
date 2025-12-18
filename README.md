@@ -156,6 +156,45 @@ Notes: inputs are validated with Zod (`src/lib/schemas`), passwords are stored h
 	- Monitoring stacks (Sentry, Datadog, Postman monitors) can alert on `error.code`.
 	- New teammates learn the “API voice” once and apply it across new handlers.
 
+## Centralized Error Handling
+
+The project uses a centralized error handling pattern so all API routes produce consistent, secure responses and structured logs.
+
+- **Logger:** [jeevan-rakth/src/lib/logger.ts](jeevan-rakth/src/lib/logger.ts) — structured JSON logger used across server code.
+- **Error handler:** [jeevan-rakth/src/lib/errorHandler.ts](jeevan-rakth/src/lib/errorHandler.ts) — classifies errors, logs details, and returns user-safe responses.
+
+Behavior by environment:
+
+- **Development:** Responses include detailed error messages and stack traces to help debugging.
+- **Production:** Responses return a generic message; logs contain full details but responses redact stack traces.
+
+Quick usage example:
+
+```ts
+// src/app/api/users/route.ts (simplified)
+import { handleError } from 'jeevan-rakth/src/lib/errorHandler';
+
+export async function GET(req: Request) {
+	try {
+		// ... handler logic
+	} catch (err) {
+		return handleError(err, 'GET /api/users', { status: 500, code: 'USERS_FETCH_FAILED' });
+	}
+}
+```
+
+Why this helps:
+
+- **Consistency:** every route returns the same envelope so frontends and tests can rely on a single parsing strategy.
+- **Security:** stack traces and internal messages are hidden from users in production.
+- **Observability:** logs are emitted as structured JSON (timestamp, level, message, meta) and can be sent to CloudWatch/Datadog.
+
+Extending the pattern:
+
+- Create custom error classes (e.g., `ValidationError`, `AuthError`) and map them to specific HTTP status codes inside `errorHandler`.
+- Enrich logs with request IDs and `x-user-id` from middleware to correlate traces across services.
+
+
 ## Sample API Calls
 
 Create an order and capture payment in one request:

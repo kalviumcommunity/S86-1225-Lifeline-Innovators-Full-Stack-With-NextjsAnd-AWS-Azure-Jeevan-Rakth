@@ -105,3 +105,75 @@ Visit http://localhost:3000 once the server reports “Ready”. Hot reloading i
 
 You are ready to build! If you run into setup snags, start by checking `.env` values, database connectivity, and the commands listed above.
 
+## Centralized Error Handling
+
+This project uses a centralized error handling pattern so all API routes produce consistent, safe responses and structured logs.
+
+- **Logger:** [src/lib/logger.ts](src/lib/logger.ts) — simple structured JSON logger used across the app.
+- **Error handler:** [src/lib/errorHandler.ts](src/lib/errorHandler.ts) — classifies, logs, and returns appropriate API responses.
+
+Behavior by environment:
+
+- **Development:** Returns detailed messages and stack traces in the JSON response.
+- **Production:** Returns a generic, user-safe message and logs full details (stack is redacted in responses).
+
+Example logger (see file):
+
+```ts
+// src/lib/logger.ts
+export const logger = {
+   info: (message: string, meta?: any) => {
+      console.log(JSON.stringify({ level: 'info', message, meta, timestamp: new Date().toISOString() }));
+   },
+   error: (message: string, meta?: any) => {
+      console.error(JSON.stringify({ level: 'error', message, meta, timestamp: new Date().toISOString() }));
+   },
+};
+```
+
+Example centralized handler (see file):
+
+```ts
+// src/lib/errorHandler.ts
+import { logger } from './logger';
+import { errorResponse, ERROR_CODES } from './responseHandler';
+
+export function handleError(error: any, context: string, options?: { status?: number; code?: string }) {
+   const isProd = process.env.NODE_ENV === 'production';
+
+   logger.error(`Error in ${context}`, {
+      message: error?.message,
+      stack: isProd ? 'REDACTED' : error?.stack,
+      context,
+   });
+
+   const userMessage = isProd ? 'Something went wrong. Please try again later.' : (error?.message ?? 'Unknown error');
+
+   return errorResponse(userMessage, { status: options?.status ?? 500, code: options?.code });
+}
+```
+
+Using the handler in routes (example):
+
+```ts
+// src/app/api/users/route.ts
+import { handleError } from '@/lib/errorHandler';
+
+try {
+   // route logic
+} catch (err) {
+   return handleError(err, 'GET /api/users', { status: 500, code: 'USERS_FETCH_FAILED' });
+}
+```
+
+Observability notes:
+
+- Logs are emitted as structured JSON which can be shipped to CloudWatch/Datadog/Splunk.
+- In production the API responses avoid leaking stack traces or internal messages.
+
+Extensibility:
+
+- Add custom error classes (e.g., `ValidationError`, `AuthError`) and map them in `handleError` to custom HTTP status codes and error codes.
+- Enrich logger metadata (request id, user id) in middleware and pass to `handleError` for improved traceability.
+
+
