@@ -18,6 +18,31 @@ git clone <repo-url>
 cd S86-1225-Lifeline-Innovators-Full-Stack-With-NextjsAnd-AWS-Azure-Jeevan-Rakth/jeevan-rakth
 ```
 
+## Quick Start After Clone or Pull
+
+After cloning or pulling the repo, run these steps from the `jeevan-rakth` directory to get a local dev environment running quickly.
+
+Windows / PowerShell friendly commands:
+
+```powershell
+# Copy example env and edit values as needed
+copy .env.example .env
+
+# Start Redis locally (optional; or use managed Redis)
+docker run -d --name redis-local -p 6379:6379 redis:8
+
+# Install deps and run migrations
+npm install
+npx prisma migrate dev
+
+# Start the dev server
+npm run dev
+```
+
+Notes:
+- Set `REDIS_URL` in `.env` if you use a remote Redis instance.
+- To run everything in containers, from the repository root run `docker compose up --build`.
+
 ## 2. Configure Environment Variables
 
 1. Copy the provided template:
@@ -175,5 +200,43 @@ Extensibility:
 
 - Add custom error classes (e.g., `ValidationError`, `AuthError`) and map them in `handleError` to custom HTTP status codes and error codes.
 - Enrich logger metadata (request id, user id) in middleware and pass to `handleError` for improved traceability.
+
+## Redis Caching (API Performance)
+
+This project includes a simple Redis cache-aside integration for API routes to improve latency on frequently requested data.
+
+- **Client:** `ioredis` (file: [src/lib/redis.ts](src/lib/redis.ts#L1)) — reads `REDIS_URL` and exports `DEFAULT_CACHE_TTL`.
+- **Pattern:** Cache-Aside (check cache → DB on miss → cache result).
+
+Example: `GET /api/users` now uses a per-page cache key `users:list:page:${page}:limit:${limit}` and caches the JSON result for `DEFAULT_CACHE_TTL` seconds (default 60s). On a cache hit the route returns the cached payload immediately.
+
+Example snippet (simplified):
+
+```ts
+import redis, { DEFAULT_CACHE_TTL } from '@/lib/redis';
+
+const cacheKey = `users:list:page:${page}:limit:${limit}`;
+const cached = await redis.get(cacheKey);
+if (cached) return JSON.parse(cached);
+// else query DB, then:
+await redis.set(cacheKey, JSON.stringify({ data, meta }), 'EX', DEFAULT_CACHE_TTL);
+```
+
+Invalidation strategy:
+- On user create/update/delete the server runs a best-effort invalidation: it deletes keys matching `users:list*` and the specific `users:${id}` cache key so subsequent requests fetch fresh data.
+- Deleting by pattern uses `redis.keys('users:list*')` and `redis.del(...)`. Note: `KEYS` can be heavy on large instances; use Redis `SCAN` or maintain explicit index keys in production.
+
+TTL policy:
+- `DEFAULT_CACHE_TTL` is read from `REDIS_TTL_SECONDS` env var or falls back to 60 seconds. Choose a TTL based on how frequently data changes and acceptable staleness.
+
+Reflection & guidance:
+- Cache reduces latency significantly for repeated reads — ideal for lists, computed results, sessions, and rate-limited data.
+- Be careful with highly dynamic data; short TTLs or on-write invalidation are recommended to reduce stale reads.
+- In production consider:
+   - Using `SCAN` instead of `KEYS` for pattern deletion.
+   - Using Redis managed services (e.g., Redis Cloud, AWS ElastiCache) with proper auth and TLS.
+   - Adding metrics (cache hit/miss counters) to observe effectiveness.
+
+Pro Tip: "Cache is like a short-term memory — it makes things fast, but only if you remember to forget at the right time." 
 
 

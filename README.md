@@ -68,6 +68,32 @@ jeevan-rakth/
 
 For detailed output samples, rollback commands, and data-protection practices, refer to [jeevan-rakth/README.md](jeevan-rakth/README.md).
 
+## Quick Start After Clone or Pull
+
+If you just cloned or pulled this repository and want to run the app locally, follow these minimal steps from the repository root.
+
+Windows / PowerShell friendly commands:
+
+```powershell
+cd jeevan-rakth
+# Copy example env (edit values as needed)
+copy .env.example .env
+
+# Start Redis locally (optional: use Docker Desktop)
+docker run -d --name redis-local -p 6379:6379 redis:8
+
+# Install dependencies and prepare DB
+npm install
+npx prisma migrate dev
+
+# Start the Next.js dev server
+npm run dev
+```
+
+Notes:
+- Set `REDIS_URL` in `.env` if using a remote/managed Redis instance.
+- If you prefer containers, run `docker compose up --build` from the repository root to start Postgres, Redis, and the app together.
+
 ## Order Workflow Overview
 
 - Transactional API in [jeevan-rakth/src/app/api/orders/route.ts](jeevan-rakth/src/app/api/orders/route.ts) wraps order creation, inventory decrement, and payment capture inside a single Prisma `$transaction`.

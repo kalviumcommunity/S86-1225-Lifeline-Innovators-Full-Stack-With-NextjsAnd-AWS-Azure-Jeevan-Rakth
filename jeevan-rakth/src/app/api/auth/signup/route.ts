@@ -7,6 +7,7 @@ import {
   successResponse,
   ERROR_CODES,
 } from "@/lib/responseHandler";
+import redis from "@/lib/redis";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
@@ -40,6 +41,17 @@ export async function POST(req: Request) {
     const newUser = await prisma.user.create({
       data: { name, email, password: hashedPassword },
     });
+
+    // Invalidate user list caches (best-effort)
+    try {
+      const keys = await redis.keys("users:list*");
+      if (keys.length) {
+        await redis.del(...keys);
+        console.log("Invalidated user list cache after signup", keys.length);
+      }
+    } catch (err) {
+      console.warn("Redis DEL failed during signup cache invalidation", err);
+    }
 
     const tokenPayload = {
       id: newUser.id,

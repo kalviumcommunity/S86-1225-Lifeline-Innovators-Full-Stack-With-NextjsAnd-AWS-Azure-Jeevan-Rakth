@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import jwt from "jsonwebtoken";
 import {
@@ -8,6 +9,7 @@ import {
 } from "@/lib/responseHandler";
 import { userCreateSchema } from "@/lib/schemas/userSchema";
 import { handleError } from "@/lib/errorHandler";
+import redis, { DEFAULT_CACHE_TTL } from "@/lib/redis";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
@@ -35,6 +37,29 @@ export async function GET(req: Request) {
     const limit = Number(searchParams.get("limit")) || 10;
     const skip = (page - 1) * limit;
 
+    const cacheKey = `users:list:page:${page}:limit:${limit}`;
+
+    // Try cache-aside: check Redis first
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        console.log("Cache Hit", cacheKey);
+        const parsed = JSON.parse(cached);
+        return NextResponse.json(
+          {
+            success: true,
+            message: "Users fetched successfully",
+            data: parsed.data,
+            meta: parsed.meta,
+            timestamp: new Date().toISOString(),
+          },
+          { status: 200, headers: { "x-cache": "HIT" } }
+        );
+      }
+    } catch (err) {
+      console.warn("Redis GET failed", err);
+    }
+
     const users = await prisma.user.findMany({
       skip,
       take: limit,
@@ -47,13 +72,22 @@ export async function GET(req: Request) {
 
     const totalUsers = await prisma.user.count();
 
-    return successResponse(
-      "Users fetched successfully",
-      { users },
-      {
-        meta: { page, limit, totalUsers },
-      }
-    );
+    const meta = { page, limit, totalUsers };
+
+    // Cache result (best-effort)
+    try {
+      await redis.set(
+        cacheKey,
+        JSON.stringify({ data: { users }, meta }),
+        "EX",
+        DEFAULT_CACHE_TTL
+      );
+      console.log("Cached", cacheKey);
+    } catch (err) {
+      console.warn("Redis SET failed", err);
+    }
+
+    return successResponse("Users fetched successfully", { users }, { meta });
   } catch (error: unknown) {
     return handleError(error, "GET /api/users", {
       status: 500,
@@ -79,6 +113,17 @@ export async function POST(req: Request) {
     }
 
     const user = await prisma.user.create({ data: parsed.data });
+
+    // Invalidate list caches (best-effort). We delete any keys matching users:list*
+    try {
+      const keys = await redis.keys("users:list*");
+      if (keys.length) {
+        await redis.del(...keys);
+        console.log("Invalidated user list cache", keys.length);
+      }
+    } catch (err) {
+      console.warn("Redis DEL failed", err);
+    }
 
     return successResponse("User created successfully", user, {
       status: 201,

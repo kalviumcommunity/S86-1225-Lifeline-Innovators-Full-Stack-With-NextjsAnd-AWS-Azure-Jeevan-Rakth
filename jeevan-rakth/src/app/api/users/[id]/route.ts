@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   ERROR_CODES,
@@ -6,6 +7,7 @@ import {
   successResponse,
 } from "@/lib/responseHandler";
 import { userUpdateSchema } from "@/lib/schemas/userSchema";
+import redis from "@/lib/redis";
 
 // GET /api/users/:id → get single user
 export async function GET(
@@ -14,6 +16,21 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
+    const cacheKey = `users:${id}`;
+
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        console.log("Cache Hit", cacheKey);
+        return NextResponse.json(JSON.parse(cached), {
+          status: 200,
+          headers: { "x-cache": "HIT" },
+        });
+      }
+    } catch (err) {
+      console.warn("Redis GET failed", err);
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
       include: {
@@ -66,6 +83,17 @@ export async function PUT(
       data: parsed.data,
     });
 
+    // Invalidate cache for this user and user lists (best-effort)
+    try {
+      const userKey = `users:${id}`;
+      const keys = await redis.keys("users:list*");
+      const delTargets = keys.length ? [userKey, ...keys] : [userKey];
+      await redis.del(...delTargets);
+      console.log("Invalidated caches for user update", delTargets.length);
+    } catch (err) {
+      console.warn("Redis DEL failed", err);
+    }
+
     return successResponse("User updated successfully", updatedUser);
   } catch (error: unknown) {
     console.error("Failed to update user:", error);
@@ -107,6 +135,17 @@ export async function DELETE(
     await prisma.user.delete({
       where: { id: Number(id) },
     });
+
+    // Invalidate cache for this user and user lists (best-effort)
+    try {
+      const userKey = `users:${id}`;
+      const keys = await redis.keys("users:list*");
+      const delTargets = keys.length ? [userKey, ...keys] : [userKey];
+      await redis.del(...delTargets);
+      console.log("Invalidated caches for user delete", delTargets.length);
+    } catch (err) {
+      console.warn("Redis DEL failed", err);
+    }
 
     return successResponse("User deleted successfully", {
       id: Number(id),
