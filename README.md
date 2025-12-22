@@ -28,13 +28,15 @@ jeevan-rakth/
 
 ## Setup Instructions
 
-1. Install dependencies: `cd jeevan-rakth && npm install`
-2. Start the development server: `npm run dev`
-3. Open the app at `http://localhost:3000`
-4. Run the linter before committing: `npm run lint`
-5. Review extended migration + seeding docs: see [jeevan-rakth/README.md](jeevan-rakth/README.md)
-6. Inspect performance notes and query logs in [jeevan-rakth/docs/perf-logs](jeevan-rakth/docs/perf-logs)
-7. Review API reference & sample payloads in the section below when integrating clients.
+1. Install dependencies: `cd jeevan-rakth && npm install` (pulls both AWS and Azure SDKs for file uploads).
+2. Copy `.env.example` and populate storage keys: see [jeevan-rakth/.env.example](jeevan-rakth/.env.example) for `FILE_STORAGE_PROVIDER`, AWS, and Azure settings.
+3. Apply migrations locally: `npx prisma migrate dev` (adds the file metadata table alongside existing schemas).
+4. Start the development server: `npm run dev`.
+5. Open the app at `http://localhost:3000`.
+6. Run the linter before committing: `npm run lint`.
+7. Review extended migration + seeding docs: see [jeevan-rakth/README.md](jeevan-rakth/README.md).
+8. Inspect performance notes and query logs in [jeevan-rakth/docs/perf-logs](jeevan-rakth/docs/perf-logs).
+9. Review API reference & sample payloads in the section below when integrating clients.
 
 ## Database & Prisma Workflow
 
@@ -57,7 +59,7 @@ jeevan-rakth/
 	npx prisma db seed
 	```
 
-- Inspect or tweak generated SQL under `prisma/migrations/**/migration.sql` before promoting to staging/production. The order workflow upgrade lives in [jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql](jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql).
+- Inspect or tweak generated SQL under `prisma/migrations/**/migration.sql` before promoting to staging/production. The order workflow upgrade lives in [jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql](jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql) and the file metadata additions are tracked by the latest migration generated from the `File` model in [jeevan-rakth/prisma/schema.prisma](jeevan-rakth/prisma/schema.prisma).
 - Validate results visually or via SQL after seeding:
 
 	```bash
@@ -101,6 +103,15 @@ Notes:
 - Commerce-specific models and indexes live in [jeevan-rakth/prisma/schema.prisma](jeevan-rakth/prisma/schema.prisma) with the migration scripted under [jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql](jeevan-rakth/prisma/migrations/20251216094500_add_order_workflows/migration.sql).
 - Performance evidence comparing sequential scan vs indexed queries is stored at [jeevan-rakth/docs/perf-logs/orders-before-indexes.log](jeevan-rakth/docs/perf-logs/orders-before-indexes.log) and [jeevan-rakth/docs/perf-logs/orders-after-indexes.log](jeevan-rakth/docs/perf-logs/orders-after-indexes.log).
 - The GET endpoint paginates results, caps page size at 50, and selects only the fields required for dashboards to avoid over-fetching.
+
+## Secure File Uploads
+
+- Pre-signed URL generation lives in [jeevan-rakth/src/app/api/upload/route.ts](jeevan-rakth/src/app/api/upload/route.ts) backed by the provider-agnostic helper at [jeevan-rakth/src/lib/storage/presign.ts](jeevan-rakth/src/lib/storage/presign.ts).
+- Metadata persistence is handled by [jeevan-rakth/src/app/api/files/route.ts](jeevan-rakth/src/app/api/files/route.ts) and the `File` model in [jeevan-rakth/prisma/schema.prisma](jeevan-rakth/prisma/schema.prisma).
+- Configure `FILE_STORAGE_PROVIDER`, TTL, size limits, and cloud credentials using [jeevan-rakth/.env.example](jeevan-rakth/.env.example). AWS keys are required for S3; Azure keys are required for Blob Storage.
+- Typical flow: client POSTs filename/type/size to `/api/upload`, receives a signed URL, uploads directly to S3/Azure, then POSTs `/api/files` with the final URL and metadata.
+- Server-side validation enforces MIME prefixes (images or PDFs), byte caps (`FILE_UPLOAD_MAX_BYTES`), and short-lived URLs (`FILE_UPLOAD_URL_TTL_SECONDS`). Azure responses include required headers so front-ends can set `x-ms-blob-type: BlockBlob` during the upload PUT.
+- Recommended verification: 1) call `/api/upload`, 2) PUT a sample file to the returned URL via `curl` or Postman, 3) persist metadata with `/api/files`, 4) confirm the object exists in the chosen bucket/container and the record appears in Prisma Studio.
 
 ## API Route & Response Reference
 

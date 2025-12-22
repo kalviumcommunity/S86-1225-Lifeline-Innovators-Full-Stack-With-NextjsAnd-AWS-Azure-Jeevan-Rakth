@@ -40,6 +40,7 @@ model User {
   comments        Comment[]
   teamMemberships TeamMember[]
   orders          Order[]
+  files           File[]
 }
 
 model Team {
@@ -155,4 +156,21 @@ model Payment {
   order Order @relation(fields: [orderId], references: [id])
 
   @@index([status])
+}
+
+model File {
+  id         Int      @id @default(autoincrement())
+  name       String
+  url        String
+  mimeType   String
+  sizeBytes  Int
+  storageKey String   @unique
+  provider   String
+  uploadedAt DateTime @default(now())
+
+  uploaderId Int?
+  uploader   User?    @relation(fields: [uploaderId], references: [id])
+
+  @@index([uploadedAt])
+  @@index([uploaderId])
 }
