@@ -239,4 +239,91 @@ Reflection & guidance:
 
 Pro Tip: "Cache is like a short-term memory — it makes things fast, but only if you remember to forget at the right time." 
 
+## Secure File Uploads with Pre-Signed URLs
+
+This feature lets clients upload directly to AWS S3 or Azure Blob while the backend signs short-lived URLs and records metadata.
+
+### Setup Checklist
+
+- Install dependencies after pulling these changes: `npm install` (adds `@azure/storage-blob`).
+- Set `.env` using the new keys in `.env.example`. Required values depend on `FILE_STORAGE_PROVIDER` (`aws` or `azure`).
+- Run the new migration: `npx prisma migrate dev --name add_file_model`.
+
+### Flow at a Glance
+
+```
+Client
+   | POST /api/upload (filename, type, size)
+   v
+Next.js API -> Issues pre-signed URL (S3 PutObject or Azure SAS)
+   | returns { uploadURL, storageKey, provider, requiredHeaders? }
+   v
+Client -> PUT file directly to cloud endpoint
+   | on success sends POST /api/files with metadata
+   v
+Prisma -> stores name, URL, mimeType, size, storageKey, provider, uploaderId
+```
+
+### Sample Responses
+
+`POST /api/upload`
+
+```json
+{
+   "success": true,
+   "message": "Upload URL generated",
+   "data": {
+      "uploadURL": "https://bucket.s3.ap-south-1.amazonaws.com/uploads/....",
+      "objectKey": "uploads/1734857082-3b594fb7-bdf1-4c44-9d4d-c54f1fd9bbbf-receipt.pdf",
+      "provider": "aws",
+      "expiresAt": "2025-12-22T05:55:00.000Z"
+   },
+   "timestamp": "2025-12-22T05:54:00.000Z"
+}
+```
+
+`POST /api/files`
+
+```json
+{
+   "success": true,
+   "message": "File metadata stored",
+   "data": {
+      "id": 1,
+      "name": "receipt.pdf",
+      "url": "https://bucket.s3.ap-south-1.amazonaws.com/uploads/...",
+      "mimeType": "application/pdf",
+      "sizeBytes": 1048576,
+      "storageKey": "uploads/1734857082-...-receipt.pdf",
+      "provider": "aws",
+      "uploadedAt": "2025-12-22T05:54:05.123Z",
+      "uploaderId": 2
+   },
+   "timestamp": "2025-12-22T05:54:05.456Z"
+}
+```
+
+### Validation and Security
+
+- MIME types limited to images and PDFs; clients must still enforce checks.
+- Maximum size defaults to 5 MB (`FILE_UPLOAD_MAX_BYTES` overrides).
+- Signed URLs expire quickly (`FILE_UPLOAD_URL_TTL_SECONDS`, default 120s).
+- Azure responses include required headers so uploads set `x-ms-blob-type: BlockBlob`.
+
+| Concern | Mitigation |
+| --- | --- |
+| Public vs private files | Keep buckets/containers private; serve via signed GETs or CDN with auth. |
+| Key exposure | Backend alone owns keys; clients receive only scoped URLs. |
+| Lifecycle | Configure S3 lifecycle rules or Blob retention policies to archive/delete stale uploads. |
+
+### Usage Notes & Evidence
+
+- Tested with `curl` to request `/api/upload`, followed by a direct PUT to the returned URL and a metadata POST. Cloud dashboard reflected the object within seconds (capture a screenshot in your environment for audits).
+- Store additional metadata (checksum, business entity) by extending `fileCreateSchema` and `prisma.file`.
+
+### Reflection
+
+- **Access trade-offs:** Keeping blobs private avoids accidental leaks; expose public URLs only when end users require frictionless access and couple with short-lived signed GETs.
+- **Lifecycle management:** Automatic archival/deletion of old uploads reduces storage costs and narrows the blast radius of compromised URLs.
+
 
