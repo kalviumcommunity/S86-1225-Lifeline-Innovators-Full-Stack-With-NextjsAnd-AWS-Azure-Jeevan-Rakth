@@ -597,3 +597,331 @@ git commit -m "chore: add ESLint/Prettier/Husky and enable strict TypeScript"
 ```
 
 If lint-staged fixes issues automatically, they will be re-added to the commit. If non-fixable errors exist, fix and re-run the commit.
+
+## Next.js App Router & Routing System
+
+The application uses Next.js 14 App Router with file-based routing, providing a clear separation between public and protected routes through middleware-based authentication.
+
+### Route Structure
+
+The app follows a file-based routing pattern where each folder inside `src/app/` represents a route:
+
+```
+src/app/
+├── page.tsx                → / (Home - Public)
+├── login/
+│   └── page.tsx           → /login (Public)
+├── dashboard/
+│   └── page.tsx           → /dashboard (Protected)
+├── users/
+│   ├── page.tsx           → /users (Protected)
+│   └── [id]/
+│       └── page.tsx       → /users/:id (Protected, Dynamic)
+├── layout.tsx             → Global layout with navigation
+└── not-found.tsx          → Custom 404 page
+```
+
+### Public Routes
+
+**Public routes** are accessible to all users without authentication:
+
+- **`/` (Home)** - [jeevan-rakth/src/app/page.tsx](jeevan-rakth/src/app/page.tsx)
+  - Landing page with application overview
+  - Features section highlighting key capabilities
+  - Statistics and impact metrics
+  - Route information and technical details
+  - Call-to-action for user registration
+
+- **`/login`** - [jeevan-rakth/src/app/login/page.tsx](jeevan-rakth/src/app/login/page.tsx)
+  - User authentication form
+  - Integrates with `/api/auth/login` endpoint
+  - Sets JWT token in httpOnly cookies upon successful login
+  - Redirects to dashboard after authentication
+  - Client-side form validation and error handling
+
+### Protected Routes
+
+**Protected routes** require valid JWT authentication and automatically redirect to `/login` if the user is not authenticated:
+
+- **`/dashboard`** - [jeevan-rakth/src/app/dashboard/page.tsx](jeevan-rakth/src/app/dashboard/page.tsx)
+  - Main dashboard with statistics cards
+  - Displays total donors, blood requests, and successful matches
+  - Quick action buttons for common tasks
+  - Logout functionality
+  - Protected by middleware JWT validation
+
+- **`/users`** - [jeevan-rakth/src/app/users/page.tsx](jeevan-rakth/src/app/users/page.tsx)
+  - User management interface
+  - Displays list of all registered users in a table format
+  - Shows user details: name, email, blood type, role
+  - Links to individual user profile pages
+  - Mock data demonstration (can be connected to API)
+
+- **`/users/[id]`** - [jeevan-rakth/src/app/users/[id]/page.tsx](jeevan-rakth/src/app/users/[id]/page.tsx)
+  - Dynamic route for individual user profiles
+  - URL parameter extraction: `/users/1`, `/users/2`, etc.
+  - Displays detailed user information including:
+    - Contact details (phone, email, address)
+    - Donation statistics (total donations, last donation date)
+    - Blood type information
+  - Breadcrumb navigation
+  - Action buttons (schedule donation, send message, view history)
+  - 404 handling for non-existent user IDs
+
+### Dynamic Routing
+
+Dynamic routes use brackets `[id]` in the folder name to capture URL parameters:
+
+```tsx
+// File: src/app/users/[id]/page.tsx
+interface Props {
+  params: { id: string };
+}
+
+export default function UserProfilePage({ params }: Props) {
+  const { id } = params; // Extracted from URL
+  // Fetch user data using id
+  // Render user profile
+}
+```
+
+**Benefits of dynamic routing:**
+- **Scalability**: Single component handles infinite user profiles
+- **SEO**: Each user profile has a unique URL
+- **Type-safe**: TypeScript ensures proper parameter handling
+- **Clean URLs**: `/users/123` instead of `/users?id=123`
+
+### Middleware Authentication
+
+Authentication is enforced at the middleware layer - [jeevan-rakth/src/middleware.ts](jeevan-rakth/src/middleware.ts):
+
+```typescript
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  // Public routes (no auth required)
+  if (pathname.startsWith("/login") || pathname === "/") {
+    return NextResponse.next();
+  }
+
+  // Protected frontend routes
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/users")) {
+    const token = req.cookies.get("token")?.value;
+
+    if (!token) {
+      const loginUrl = new URL("/login", req.url);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    try {
+      jwt.verify(token, JWT_SECRET);
+      return NextResponse.next();
+    } catch {
+      const loginUrl = new URL("/login", req.url);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // API route protection (continues existing logic)
+  // ...
+}
+
+export const config = {
+  matcher: ["/api/:path*", "/dashboard/:path*", "/users/:path*"],
+};
+```
+
+**How middleware works:**
+1. Intercepts requests before they reach route handlers
+2. Checks if route requires authentication
+3. Validates JWT token from cookies
+4. Redirects to `/login` if authentication fails
+5. Allows request to proceed if token is valid
+
+**Advantages:**
+- Centralized authentication logic
+- Prevents unauthorized access at the edge
+- Automatic redirection to login
+- No need to add auth checks in every page component
+- Works for both frontend pages and API routes
+
+### Navigation & Layout
+
+Global navigation is implemented in [jeevan-rakth/src/app/layout.tsx](jeevan-rakth/src/app/layout.tsx):
+
+```tsx
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <nav className="bg-white shadow-md">
+          <Link href="/">Home</Link>
+          <Link href="/login">Login</Link>
+          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/users">Users</Link>
+          <Link href="/users/1">User Profile</Link>
+        </nav>
+        {children}
+        <footer>© 2024 Jeevan Rakth</footer>
+      </body>
+    </html>
+  );
+}
+```
+
+**Layout features:**
+- Persistent navigation across all pages
+- Active route highlighting capability
+- Responsive design with Tailwind CSS
+- Footer with links and copyright
+- Brand identity with logo and colors
+
+**Breadcrumbs** are implemented in dynamic routes for better navigation:
+
+```tsx
+// In /users/[id]/page.tsx
+<nav className="breadcrumbs">
+  <Link href="/">Home</Link> / 
+  <Link href="/users">Users</Link> / 
+  <span>{user.name}</span>
+</nav>
+```
+
+### Error Handling
+
+**Custom 404 Page** - [jeevan-rakth/src/app/not-found.tsx](jeevan-rakth/src/app/not-found.tsx):
+
+- Displays user-friendly error message
+- Provides navigation links to return home or dashboard
+- Helpful suggestions and support contact information
+- Consistent branding and styling
+- Automatic fallback for non-existent routes
+
+**Error handling in dynamic routes:**
+- Check if resource exists (e.g., user ID)
+- Display appropriate error message if not found
+- Provide link to return to listing page
+- Log errors for debugging
+
+### Routing Best Practices
+
+1. **File Organization**
+   - Use folder-based routing for clear structure
+   - Group related routes in folders
+   - Keep `page.tsx` for route components
+   - Use `layout.tsx` for shared layouts
+
+2. **Authentication Flow**
+   - Implement middleware for route protection
+   - Store JWT in httpOnly cookies for security
+   - Automatic redirect to login for unauthorized access
+   - Clear token on logout
+
+3. **Dynamic Routes**
+   - Use `[param]` syntax for dynamic segments
+   - Validate parameters before fetching data
+   - Handle edge cases (invalid IDs, missing data)
+   - Implement loading states
+
+4. **Navigation**
+   - Use Next.js `<Link>` for client-side navigation
+   - Implement breadcrumbs for nested routes
+   - Highlight active routes
+   - Provide clear navigation hierarchy
+
+5. **Error States**
+   - Create custom 404 pages
+   - Handle loading states
+   - Display user-friendly error messages
+   - Provide recovery options
+
+### Route Security
+
+**Protected Routes:**
+- JWT token required in cookies
+- Middleware validates token before page load
+- Automatic redirect to `/login` if unauthenticated
+- Token expiration handling
+
+**API Routes:**
+- Bearer token in Authorization header
+- Role-based access control (admin vs user)
+- Token validation in middleware
+- Proper error responses (401, 403)
+
+### User Experience Benefits
+
+1. **Clear Navigation**: Users understand where they are and how to move around
+2. **Breadcrumbs**: Especially helpful in nested routes like `/users/[id]`
+3. **Consistent Layout**: Navigation and footer persist across pages
+4. **Fast Navigation**: Client-side routing for instant page transitions
+5. **Error Recovery**: 404 page helps users get back on track
+6. **Security**: Protected routes automatically redirect to login
+
+### Testing Routes
+
+To test the routing system:
+
+1. **Public Access:**
+   ```
+   Visit http://localhost:3000/ - Should work without login
+   Visit http://localhost:3000/login - Should show login form
+   ```
+
+2. **Protected Access (Not Logged In):**
+   ```
+   Visit http://localhost:3000/dashboard - Should redirect to /login
+   Visit http://localhost:3000/users - Should redirect to /login
+   Visit http://localhost:3000/users/1 - Should redirect to /login
+   ```
+
+3. **Protected Access (Logged In):**
+   ```
+   Login via /login page
+   Visit http://localhost:3000/dashboard - Should show dashboard
+   Visit http://localhost:3000/users - Should show user list
+   Visit http://localhost:3000/users/1 - Should show user profile
+   Visit http://localhost:3000/users/999 - Should show "user not found"
+   ```
+
+4. **Dynamic Routes:**
+   ```
+   Visit http://localhost:3000/users/1 - User 1 profile
+   Visit http://localhost:3000/users/2 - User 2 profile
+   Visit http://localhost:3000/users/5 - User 5 profile
+   ```
+
+5. **404 Testing:**
+   ```
+   Visit http://localhost:3000/nonexistent - Should show custom 404 page
+   ```
+
+### Screenshots & Visual Documentation
+
+The routing system provides:
+
+- **Home Page:** Welcome screen with route information
+- **Login Page:** Clean authentication form
+- **Dashboard:** Protected stats dashboard
+- **Users List:** Table view of all users
+- **User Profile:** Detailed view with breadcrumbs
+- **404 Page:** Friendly error page
+
+### Reflection: Routing Architecture
+
+**Why this approach works:**
+
+1. **Scalability**: Dynamic routes support unlimited users without creating new files
+2. **Security**: Middleware ensures consistent authentication across all protected routes
+3. **SEO**: Server-side rendering with unique URLs for each page
+4. **Developer Experience**: File-based routing is intuitive and easy to maintain
+5. **User Experience**: Fast navigation, clear structure, and helpful error messages
+6. **Maintainability**: Centralized auth logic and consistent patterns
+
+**Future improvements:**
+- Role-based route protection (admin vs donor routes)
+- Nested layouts for different sections
+- Advanced error boundaries
+- Analytics tracking for route transitions
+- Server-side data fetching with React Server Components
+
