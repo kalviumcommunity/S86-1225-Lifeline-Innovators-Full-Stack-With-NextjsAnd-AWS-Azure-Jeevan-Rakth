@@ -925,3 +925,408 @@ The routing system provides:
 - Analytics tracking for route transitions
 - Server-side data fetching with React Server Components
 
+---
+
+## Component Architecture: Reusable UI Elements
+
+A well-structured component architecture ensures **reusability**, **maintainability**, **scalability**, and **accessibility** across the entire application. This section documents our modular component design approach.
+
+### Why Component Architecture Matters
+
+| Benefit | Description |
+|---------|-------------|
+| **Reusability** | Common UI pieces (e.g., buttons, navbars) can be used across pages |
+| **Maintainability** | Updating one component updates the entire UI consistently |
+| **Scalability** | Clear structure allows easier onboarding and expansion |
+| **Accessibility** | Shared components standardize ARIA roles and keyboard interactions |
+
+### Component Folder Structure
+
+```
+jeevan-rakth/
+├── components/
+│   ├── layout/
+│   │   ├── Header.tsx           → Top navigation bar
+│   │   ├── Sidebar.tsx          → Side navigation menu
+│   │   └── LayoutWrapper.tsx    → Combines Header + Sidebar
+│   ├── ui/
+│   │   ├── Button.tsx           → Reusable button component
+│   │   ├── Card.tsx             → Card container component
+│   │   └── InputField.tsx       → Form input with validation
+│   └── index.ts                 → Barrel exports for clean imports
+├── src/
+│   └── app/
+│       └── layout.tsx           → Uses LayoutWrapper
+```
+
+### Component Hierarchy Diagram
+
+```
+RootLayout (app/layout.tsx)
+  └── LayoutWrapper
+       ├── Header
+       │    └── Navigation Links (Home, Dashboard, Users)
+       └── Sidebar
+            └── Navigation Links (Overview, Users, Upload)
+       └── Main Content (children)
+```
+
+### Layout Components
+
+#### 1. Header Component
+
+**File:** [components/layout/Header.tsx](jeevan-rakth/components/layout/Header.tsx)
+
+**Purpose:** Top navigation bar with application branding and main navigation links.
+
+```tsx
+"use client";
+import Link from "next/link";
+
+export default function Header() {
+  return (
+    <header className="w-full bg-blue-600 text-white px-6 py-3 flex justify-between items-center shadow-md">
+      <h1 className="font-semibold text-lg">Jeevan Rakth</h1>
+      <nav className="flex gap-4" role="navigation" aria-label="Main navigation">
+        <Link href="/">Home</Link>
+        <Link href="/dashboard">Dashboard</Link>
+        <Link href="/users">Users</Link>
+      </nav>
+    </header>
+  );
+}
+```
+
+**Key Features:**
+- Consistent blue branding (`bg-blue-600`)
+- ARIA roles for accessibility (`role="navigation"`)
+- Focus states for keyboard navigation
+- Responsive design with flexbox
+
+#### 2. Sidebar Component
+
+**File:** [components/layout/Sidebar.tsx](jeevan-rakth/components/layout/Sidebar.tsx)
+
+**Purpose:** Side navigation menu with contextual links and active state highlighting.
+
+```tsx
+"use client";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+export default function Sidebar() {
+  const pathname = usePathname();
+
+  const links = [
+    { href: "/dashboard", label: "Overview" },
+    { href: "/users", label: "Users" },
+    { href: "/upload", label: "Upload Files" },
+  ];
+
+  return (
+    <aside className="w-64 h-screen bg-gray-100 border-r p-4">
+      <h2 className="text-lg font-bold mb-4">Navigation</h2>
+      <ul className="space-y-2">
+        {links.map(link => {
+          const isActive = pathname === link.href;
+          return (
+            <li key={link.href}>
+              <Link 
+                href={link.href} 
+                className={isActive ? "bg-blue-600 text-white" : "text-gray-700"}
+                aria-current={isActive ? "page" : undefined}
+              >
+                {link.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </aside>
+  );
+}
+```
+
+**Key Features:**
+- Dynamic link data for scalability
+- Active state highlighting using `usePathname()`
+- ARIA `aria-current` for screen readers
+- Hover states for better UX
+
+#### 3. LayoutWrapper Component
+
+**File:** [components/layout/LayoutWrapper.tsx](jeevan-rakth/components/layout/LayoutWrapper.tsx)
+
+**Purpose:** Main layout foundation combining Header and Sidebar.
+
+```tsx
+import Header from "./Header";
+import Sidebar from "./Sidebar";
+
+export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col h-screen">
+      <Header />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar />
+        <main className="flex-1 bg-white p-6 overflow-auto" role="main">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
+```
+
+**Key Features:**
+- Full-height layout (`h-screen`)
+- Flexbox-based responsive design
+- Overflow handling for content scrolling
+- Semantic HTML with `role="main"`
+
+### UI Components
+
+#### 1. Button Component
+
+**File:** [components/ui/Button.tsx](jeevan-rakth/components/ui/Button.tsx)
+
+**Props Contract:**
+
+```typescript
+interface ButtonProps {
+  label: string;
+  onClick?: () => void;
+  variant?: "primary" | "secondary" | "danger";
+  type?: "button" | "submit" | "reset";
+  disabled?: boolean;
+  ariaLabel?: string;
+}
+```
+
+**Example Usage:**
+
+```tsx
+import { Button } from "@/components";
+
+<Button label="Submit" variant="primary" type="submit" />
+<Button label="Cancel" variant="secondary" onClick={handleCancel} />
+<Button label="Delete" variant="danger" disabled={isProcessing} />
+```
+
+**Accessibility Features:**
+- Focus rings (`focus:ring-2`)
+- Disabled states with cursor indication
+- Custom ARIA labels
+- Keyboard-friendly
+
+#### 2. Card Component
+
+**File:** [components/ui/Card.tsx](jeevan-rakth/components/ui/Card.tsx)
+
+**Props Contract:**
+
+```typescript
+interface CardProps {
+  title?: string;
+  children: React.ReactNode;
+  className?: string;
+  footer?: React.ReactNode;
+}
+```
+
+**Example Usage:**
+
+```tsx
+import { Card, Button } from "@/components";
+
+<Card 
+  title="User Profile" 
+  footer={<Button label="Edit Profile" variant="primary" />}
+>
+  <p>User information goes here...</p>
+</Card>
+```
+
+#### 3. InputField Component
+
+**File:** [components/ui/InputField.tsx](jeevan-rakth/components/ui/InputField.tsx)
+
+**Props Contract:**
+
+```typescript
+interface InputFieldProps {
+  label: string;
+  type?: string;
+  placeholder?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
+  disabled?: boolean;
+  error?: string;
+  id?: string;
+  name?: string;
+}
+```
+
+**Example Usage:**
+
+```tsx
+import { InputField } from "@/components";
+
+<InputField 
+  label="Email Address" 
+  type="email"
+  placeholder="you@example.com"
+  required
+  error={errors.email}
+/>
+```
+
+**Accessibility Features:**
+- Proper `label` and `htmlFor` associations
+- Error messages with `aria-describedby`
+- `aria-invalid` for validation states
+- Required field indicators with ARIA labels
+
+### Barrel Exports for Clean Imports
+
+**File:** [components/index.ts](jeevan-rakth/components/index.ts)
+
+```typescript
+// Layout Components
+export { default as Header } from "./layout/Header";
+export { default as Sidebar } from "./layout/Sidebar";
+export { default as LayoutWrapper } from "./layout/LayoutWrapper";
+
+// UI Components
+export { default as Button } from "./ui/Button";
+export { default as Card } from "./ui/Card";
+export { default as InputField } from "./ui/InputField";
+```
+
+**Usage:**
+
+```tsx
+// Instead of multiple imports:
+import Header from "@/components/layout/Header";
+import Button from "@/components/ui/Button";
+
+// Use single import:
+import { Header, Button, Card } from "@/components";
+```
+
+### Integration with Root Layout
+
+**File:** [src/app/layout.tsx](jeevan-rakth/src/app/layout.tsx)
+
+```tsx
+import { LayoutWrapper } from "@/components";
+import "./globals.css";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <LayoutWrapper>{children}</LayoutWrapper>
+      </body>
+    </html>
+  );
+}
+```
+
+**Result:** All pages (`/`, `/dashboard`, `/users`) automatically include Header and Sidebar.
+
+### Accessibility Considerations
+
+Our component architecture prioritizes accessibility:
+
+1. **Semantic HTML:** Proper use of `<header>`, `<nav>`, `<main>`, `<aside>` elements
+2. **ARIA Roles:** `role="navigation"`, `role="main"` for screen readers
+3. **Keyboard Navigation:** Focus states on all interactive elements
+4. **Color Contrast:** WCAG AA compliant color combinations
+5. **Form Accessibility:** Proper labels, error associations, required field indicators
+6. **Active States:** `aria-current="page"` for navigation highlighting
+
+### Visual Consistency
+
+All components follow a consistent design system:
+
+- **Primary Color:** Blue (`bg-blue-600`, `text-blue-600`)
+- **Spacing:** Tailwind spacing scale (4, 6, 8 units)
+- **Border Radius:** `rounded` for buttons, `rounded-lg` for cards
+- **Shadows:** `shadow-sm`, `shadow-md` for depth
+- **Typography:** Inter font family, consistent size hierarchy
+
+### Props Contracts & Type Safety
+
+Each component uses TypeScript interfaces to ensure:
+
+- **Type Safety:** Catch errors at compile time
+- **IntelliSense:** Auto-completion in IDEs
+- **Documentation:** Self-documenting prop requirements
+- **Refactoring:** Safe renaming and updates
+
+### Benefits of Modular Architecture
+
+1. **DRY Principle:** Write once, use everywhere
+2. **Consistent UX:** Same look and feel across all pages
+3. **Easy Updates:** Change button style in one file, updates everywhere
+4. **Team Collaboration:** Clear component boundaries
+5. **Testing:** Components can be tested in isolation
+6. **Performance:** Reusable components optimize bundle size
+7. **Developer Productivity:** Faster feature development
+
+### Future Component Enhancements
+
+- **Form Component:** Complete form wrapper with validation
+- **Modal Component:** Accessible dialog overlays
+- **Table Component:** Data grid with sorting and pagination
+- **Alert Component:** Success, error, warning notifications
+- **Loading States:** Skeleton screens and spinners
+- **Storybook Integration:** Visual component documentation
+- **Theme System:** Dark mode support
+- **Animation Library:** Smooth transitions and micro-interactions
+
+### Testing Component Architecture
+
+To validate the component architecture:
+
+1. **Visual Testing:**
+   ```bash
+   npm run dev
+   # Visit pages and verify consistent header/sidebar
+   ```
+
+2. **Accessibility Testing:**
+   ```bash
+   # Use browser dev tools to check ARIA attributes
+   # Test keyboard navigation (Tab, Enter, Space)
+   ```
+
+3. **Type Checking:**
+   ```bash
+   npm run type-check
+   # Verify no TypeScript errors in components
+   ```
+
+### Reflection: Component Design Benefits
+
+**What we achieved:**
+
+1. **Reusable Architecture:** Components used across multiple pages without duplication
+2. **Consistent Design:** Header and Sidebar provide uniform navigation experience
+3. **Maintainability:** Single source of truth for UI elements
+4. **Accessibility:** ARIA roles, keyboard navigation, semantic HTML throughout
+5. **Type Safety:** TypeScript interfaces prevent prop errors
+6. **Developer Experience:** Barrel exports simplify imports
+7. **Scalability:** Easy to add new components following established patterns
+
+**Impact on development:**
+
+- Faster feature implementation using pre-built components
+- Reduced bug surface area through component reuse
+- Improved code quality with TypeScript validation
+- Better collaboration with clear component contracts
+- Enhanced user experience through consistent design
+
+This component architecture positions Jeevan Rakth for rapid, maintainable growth while ensuring accessibility and visual consistency across the entire application.
