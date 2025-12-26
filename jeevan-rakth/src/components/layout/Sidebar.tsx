@@ -1,15 +1,20 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useUI } from "@/hooks/useUI";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { sidebarOpen } = useUI();
 
   const links = [
     { href: "/dashboard", label: "Overview" },
     { href: "/users", label: "Users" },
     { href: "/upload", label: "Upload Files" },
+    { href: "/demo", label: "Context Demo" },
   ];
+
+  if (!sidebarOpen) return null;
 
   return (
     <aside

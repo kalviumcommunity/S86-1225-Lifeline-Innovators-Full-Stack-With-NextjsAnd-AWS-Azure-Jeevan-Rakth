@@ -1330,3 +1330,411 @@ To validate the component architecture:
 - Enhanced user experience through consistent design
 
 This component architecture positions Jeevan Rakth for rapid, maintainable growth while ensuring accessibility and visual consistency across the entire application.
+
+---
+
+## Context & Custom Hooks: State Management Architecture
+
+This section demonstrates how React Context and custom hooks centralize global state management, making authentication and UI preferences accessible throughout the application without prop drilling.
+
+### Why Use Context and Hooks?
+
+| Concept | Purpose | Example |
+|---------|---------|---------|
+| **Context** | Provides a way to pass data through the component tree without props | Share logged-in user data across pages |
+| **Custom Hook** | Encapsulates reusable logic for cleaner components | `useAuth()` handles login, logout, and state access |
+| **Reducer** (optional) | Manages complex state transitions predictably | Handle UI theme toggling with action types |
+
+**Key Idea:** Context centralizes data, while custom hooks provide an elegant interface to use it anywhere.
+
+### Folder Structure
+
+```
+jeevan-rakth/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx         → Wraps app with providers
+│   │   ├── login/page.tsx     → Uses useAuth hook
+│   │   ├── signup/page.tsx    → Uses useAuth hook
+│   │   └── demo/page.tsx      → Context demo page
+│   ├── context/
+│   │   ├── AuthContext.tsx    → Authentication state & logic
+│   │   └── UIContext.tsx      → Theme & sidebar state
+│   ├── hooks/
+│   │   ├── useAuth.ts         → Clean auth interface
+│   │   └── useUI.ts           → Clean UI interface
+│   └── components/
+│       └── layout/
+│           ├── Header.tsx     → Uses both hooks
+│           └── Sidebar.tsx    → Uses UI hook
+```
+
+### AuthContext Implementation
+
+**File:** [src/context/AuthContext.tsx](jeevan-rakth/src/context/AuthContext.tsx)
+
+The AuthContext manages user authentication state and provides login, signup, and logout functionality:
+
+```typescript
+"use client";
+import { createContext, useState, useContext, ReactNode } from "react";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+}
+
+interface AuthContextType {
+  user: User | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  signup: (name: string, email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  isLoading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const login = async (email: string, password: string) => {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      setUser(data.user);
+      return true;
+    }
+    return false;
+  };
+
+  // ... signup and logout methods
+
+  return (
+    <AuthContext.Provider value={{ user, login, signup, logout, isLoading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuthContext() {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuthContext must be used within an AuthProvider");
+  return context;
+}
+```
+
+**Key Features:**
+- Type-safe user state with TypeScript interfaces
+- Async login/signup with API integration
+- Automatic auth check on mount
+- Error handling for network failures
+
+### UIContext Implementation
+
+**File:** [src/context/UIContext.tsx](jeevan-rakth/src/context/UIContext.tsx)
+
+The UIContext manages UI preferences like theme and sidebar visibility:
+
+```typescript
+"use client";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+
+interface UIContextType {
+  theme: "light" | "dark";
+  toggleTheme: () => void;
+  sidebarOpen: boolean;
+  toggleSidebar: () => void;
+}
+
+const UIContext = createContext<UIContextType | undefined>(undefined);
+
+export function UIProvider({ children }: { children: ReactNode }) {
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Load theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as "light" | "dark" | null;
+    if (savedTheme) setTheme(savedTheme);
+  }, []);
+
+  // Save theme to localStorage
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "light" ? "dark" : "light"));
+    console.log("Theme toggled");
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => !prev);
+    console.log("Sidebar toggled");
+  };
+
+  return (
+    <UIContext.Provider value={{ theme, toggleTheme, sidebarOpen, toggleSidebar }}>
+      {children}
+    </UIContext.Provider>
+  );
+}
+```
+
+**Key Features:**
+- Persistent theme using localStorage
+- Automatic dark mode class toggle
+- Console logging for debugging
+- Clean toggle functions
+
+### Custom Hooks for Clean Consumption
+
+#### useAuth Hook
+
+**File:** [src/hooks/useAuth.ts](jeevan-rakth/src/hooks/useAuth.ts)
+
+```typescript
+import { useAuthContext } from "@/context/AuthContext";
+
+export function useAuth() {
+  const { user, login, signup, logout, isLoading } = useAuthContext();
+
+  return {
+    isAuthenticated: !!user,
+    user,
+    login,
+    signup,
+    logout,
+    isLoading,
+  };
+}
+```
+
+**Benefits:**
+- Computed `isAuthenticated` property
+- Abstracts internal context structure
+- Simpler API for components
+
+#### useUI Hook
+
+**File:** [src/hooks/useUI.ts](jeevan-rakth/src/hooks/useUI.ts)
+
+```typescript
+import { useUIContext } from "@/context/UIContext";
+
+export function useUI() {
+  const { theme, toggleTheme, sidebarOpen, toggleSidebar } = useUIContext();
+
+  return {
+    theme,
+    toggleTheme,
+    sidebarOpen,
+    toggleSidebar,
+    isDarkMode: theme === "dark",
+  };
+}
+```
+
+**Benefits:**
+- Adds `isDarkMode` convenience property
+- Encapsulates theme logic
+- Clean interface for UI controls
+
+### Global Provider Setup
+
+**File:** [src/app/layout.tsx](jeevan-rakth/src/app/layout.tsx)
+
+Wrap the entire app with both providers to make contexts globally available:
+
+```typescript
+import { AuthProvider } from "@/context/AuthContext";
+import { UIProvider } from "@/context/UIContext";
+import { LayoutWrapper } from "@/components";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <AuthProvider>
+          <UIProvider>
+            <LayoutWrapper>{children}</LayoutWrapper>
+          </UIProvider>
+        </AuthProvider>
+      </body>
+    </html>
+  );
+}
+```
+
+**Behavior:** Now both contexts are globally available — any component can access authentication and UI state directly.
+
+### Usage Examples
+
+#### Login Page
+
+**File:** [src/app/login/page.tsx](jeevan-rakth/src/app/login/page.tsx)
+
+```typescript
+"use client";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+
+export default function Login() {
+  const { login } = useAuth();
+  const router = useRouter();
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    const success = await login(email, password);
+    if (success) router.push("/dashboard");
+  }
+
+  // ... form JSX
+}
+```
+
+#### Header Component
+
+**File:** [src/components/layout/Header.tsx](jeevan-rakth/src/components/layout/Header.tsx)
+
+```typescript
+"use client";
+import { useAuth } from "@/hooks/useAuth";
+import { useUI } from "@/hooks/useUI";
+
+export default function Header() {
+  const { user, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme, toggleSidebar } = useUI();
+
+  return (
+    <header>
+      <button onClick={toggleSidebar}>☰</button>
+      <button onClick={toggleTheme}>
+        {theme === "dark" ? "🌞" : "🌙"}
+      </button>
+      {isAuthenticated ? (
+        <>
+          <span>{user.name}</span>
+          <button onClick={logout}>Logout</button>
+        </>
+      ) : (
+        <Link href="/login">Login</Link>
+      )}
+    </header>
+  );
+}
+```
+
+#### Context Demo Page
+
+**File:** [src/app/demo/page.tsx](jeevan-rakth/src/app/demo/page.tsx)
+
+Visit `/demo` to see a live demonstration of:
+- Auth state (login/logout)
+- Theme toggling (light/dark)
+- Sidebar visibility controls
+- Console logging of state changes
+
+### State Flow Diagram
+
+```
+RootLayout
+  └── AuthProvider
+       └── UIProvider
+            └── LayoutWrapper
+                 ├── Header (uses useAuth + useUI)
+                 ├── Sidebar (uses useUI)
+                 └── Pages (uses useAuth + useUI)
+```
+
+### Console Output Examples
+
+When using the context & hooks:
+
+```
+User logged in: { id: "1", name: "John Doe", email: "john@example.com" }
+Theme toggled to: dark
+Sidebar toggled: closed
+User logged out
+```
+
+### Benefits of This Architecture
+
+| Benefit | Description |
+|---------|-------------|
+| **No Prop Drilling** | State accessible anywhere without passing through intermediate components |
+| **Type Safety** | Full TypeScript support prevents runtime errors |
+| **Separation of Concerns** | Logic in context, UI in components |
+| **Testable** | Hooks can be tested independently |
+| **Scalable** | Easy to add new contexts (e.g., NotificationContext) |
+| **Performance** | Components only re-render when used context values change |
+
+### Debugging & Performance Tips
+
+1. **React DevTools:** Inspect context provider values in Components tab
+2. **Memoization:** Wrap expensive consumers in `React.memo()` to prevent unnecessary re-renders
+3. **Multiple Contexts:** Split contexts by domain to minimize re-render scope
+4. **useReducer:** For complex state, replace `useState` with `useReducer`:
+
+```typescript
+const [state, dispatch] = useReducer(reducer, initialState);
+```
+
+### Testing Context & Hooks
+
+**Test auth flow:**
+1. Visit `/login` and submit credentials
+2. Check console for "User logged in" message
+3. Verify Header shows user name
+4. Click Logout, verify user cleared
+
+**Test UI controls:**
+1. Visit `/demo` page
+2. Click "Toggle Theme" → check console and visual change
+3. Click "Toggle Sidebar" → sidebar appears/disappears
+4. Refresh page → theme persists via localStorage
+
+### Accessibility Considerations
+
+- **Keyboard Navigation:** All toggle buttons accessible via Tab key
+- **ARIA Labels:** Theme toggle has `aria-label="Toggle theme"`
+- **Screen Readers:** Login/logout state announced via text content
+- **Focus States:** Visual focus indicators on interactive elements
+
+### Future Enhancements
+
+- **Notification Context:** Toast messages for success/error states
+- **Cart Context:** For donation requests and blood bank inventory
+- **Preferences Context:** User settings (language, notifications)
+- **useReducer Pattern:** Complex state machines for multi-step flows
+- **React Query Integration:** Server state management alongside client state
+
+### Reflection: Why This Matters
+
+**Scalability:**
+- Adding new features doesn't require refactoring prop chains
+- New pages automatically have access to auth and UI state
+- Easy to add new contexts without touching existing code
+
+**Developer Experience:**
+- Clean, declarative API via custom hooks
+- TypeScript autocomplete for all context values
+- Centralized logic easier to debug and maintain
+
+**User Experience:**
+- Persistent theme preference across sessions
+- Instant auth state updates across all components
+- Smooth UI interactions with sidebar toggle
+
+This context and hooks architecture ensures Jeevan Rakth can scale efficiently while maintaining clean, maintainable code and excellent user experience.
+
