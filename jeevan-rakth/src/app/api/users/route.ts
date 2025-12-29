@@ -10,12 +10,19 @@ import {
 import { userCreateSchema } from "@/lib/schemas/userSchema";
 import { handleError } from "@/lib/errorHandler";
 import redis, { DEFAULT_CACHE_TTL } from "@/lib/redis";
+// Uncomment to test loading/error states:
+// import { simulateDelay, simulateError } from "@/lib/testUtils";
 
 const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
 
 // GET /api/users?page=1&limit=10 → list users with pagination
 export async function GET(req: Request) {
   try {
+    // 🧪 TEST LOADING STATE: Uncomment to add 3-second delay
+    // await simulateDelay(3000);
+
+    // 🧪 TEST ERROR STATE: Uncomment to simulate an error
+    // simulateError('Database connection failed');
     // verify auth token
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.split(" ")[1];
