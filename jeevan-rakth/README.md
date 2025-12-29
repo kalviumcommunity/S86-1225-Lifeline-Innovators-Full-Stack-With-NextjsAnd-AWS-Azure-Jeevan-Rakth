@@ -326,4 +326,181 @@ Prisma -> stores name, URL, mimeType, size, storageKey, provider, uploaderId
 - **Access trade-offs:** Keeping blobs private avoids accidental leaks; expose public URLs only when end users require frictionless access and couple with short-lived signed GETs.
 - **Lifecycle management:** Automatic archival/deletion of old uploads reduces storage costs and narrows the blast radius of compromised URLs.
 
+---
 
+## React Hook Form + Zod Integration
+
+This project demonstrates production-grade form management using **React Hook Form** and **Zod** for type-safe, validated forms with minimal re-renders and excellent developer experience.
+
+### Why React Hook Form + Zod?
+
+| Tool | Purpose | Key Benefit |
+|------|---------|-------------|
+| React Hook Form | Manages form state and validation with minimal re-renders | Lightweight and performant |
+| Zod | Provides declarative schema validation | Type-safe and reusable schemas |
+| @hookform/resolvers | Connects Zod to React Hook Form seamlessly | Simplifies schema integration |
+
+**Key Idea:** React Hook Form optimizes rendering and state management, while Zod enforces correctness through schemas.
+
+### Installation
+
+The following packages have been installed in this project:
+
+```bash
+npm install react-hook-form zod @hookform/resolvers
+```
+
+### Implementation Overview
+
+#### 1. Reusable Form Input Component
+
+**Location:** [src/components/ui/FormInput.tsx](src/components/ui/FormInput.tsx)
+
+A reusable, accessible input component that integrates with React Hook Form:
+
+```typescript
+interface FormInputProps {
+  label: string;
+  type?: string;
+  register: any;
+  name: string;
+  error?: string;
+}
+```
+
+**Features:**
+- Automatic error styling (red border on validation failure)
+- ARIA attributes for accessibility (`aria-invalid`, `role="alert"`)
+- Associated labels using `htmlFor` and `id`
+- Conditional error message display
+
+#### 2. Signup Form with Validation
+
+**Location:** [src/app/signup/page.tsx](src/app/signup/page.tsx)
+
+Enhanced the existing signup form with:
+- **Zod Schema Validation:**
+  - Name: minimum 3 characters
+  - Email: valid email format
+  - Password: minimum 6 characters
+- **React Hook Form Integration:**
+  - `register()` for controlled inputs
+  - `handleSubmit()` for form submission
+  - `formState.errors` for error handling
+  - `isSubmitting` state for loading feedback
+
+**Example Schema:**
+```typescript
+const signupSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters long"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters long"),
+});
+
+type SignupFormData = z.infer<typeof signupSchema>;
+```
+
+#### 3. Contact Form (Reusable Component Demo)
+
+**Location:** [src/app/contact/page.tsx](src/app/contact/page.tsx)
+
+Demonstrates full reusability with:
+- Custom `FormInput` component usage
+- Schema-based validation
+- Textarea support with validation
+- Form reset on successful submission
+- Async submission handling
+
+**Features:**
+- 10+ character message requirement
+- Email validation
+- Success feedback with `alert()` and form reset
+- Accessible error messages
+
+### Accessibility & UX Best Practices
+
+✅ **Implemented Features:**
+
+1. **Associated Labels:** Every input has a `<label>` with matching `htmlFor` and `id` attributes
+2. **ARIA Attributes:** 
+   - `aria-invalid` set to "true" when field has errors
+   - Error messages include `role="alert"` for screen reader announcements
+3. **Visual Feedback:**
+   - Red borders on invalid fields
+   - Error messages displayed below inputs
+   - Disabled button styling during submission
+4. **Keyboard Navigation:** All form elements are keyboard accessible
+5. **Clear Error Messages:** Specific, actionable validation messages
+
+### Type Safety Benefits
+
+- **Automatic TypeScript Types:** Using `z.infer<typeof schema>` derives types from Zod schemas
+- **Compile-Time Safety:** TypeScript catches type mismatches before runtime
+- **Single Source of Truth:** Schema defines both validation rules and types
+
+### Code Organization
+
+```
+src/
+├── app/
+│   ├── signup/page.tsx          # Enhanced with React Hook Form + Zod
+│   └── contact/page.tsx         # New: Demonstrates reusable components
+└── components/
+    └── ui/
+        └── FormInput.tsx        # New: Reusable form input component
+```
+
+### Testing the Forms
+
+1. **Visit Signup Form:** Navigate to `/signup`
+   - Try submitting empty form → See validation errors
+   - Enter name with <3 characters → See error
+   - Enter invalid email → See error
+   - Enter password with <6 characters → See error
+   - Fill valid data → Successfully submits and redirects
+
+2. **Visit Contact Form:** Navigate to `/contact`
+   - Test all validation rules
+   - Submit successfully to see form reset
+   - Check console for submitted data
+
+### Screenshots & Evidence
+
+**Recommended captures for documentation:**
+1. Form with validation errors displayed
+2. Form in submitting state (disabled button)
+3. Browser console showing submitted form data
+4. Successful submission feedback
+
+### Reflection on Approach
+
+**Reusability:**
+- `FormInput` component eliminates repetitive code
+- Zod schemas can be shared across client and server
+- Form patterns apply to any data collection need
+
+**Maintainability:**
+- Centralized validation logic in schemas
+- Type safety prevents runtime errors
+- Clear separation of concerns (UI vs validation logic)
+
+**Performance:**
+- React Hook Form minimizes re-renders
+- Only fields being edited trigger updates
+- Validation runs efficiently without full form re-renders
+
+**Accessibility:**
+- Screen reader friendly with proper ARIA labels
+- Keyboard navigation works seamlessly
+- Error states clearly communicated
+
+### Future Enhancements
+
+Consider adding:
+- Custom error component with icons
+- Field-level async validation (e.g., check if email exists)
+- Multi-step form wizard
+- File upload validation with Zod
+- Integration with form analytics
+
+---
