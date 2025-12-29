@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { LayoutWrapper } from "@/components";
 import { AuthProvider } from "@/context/AuthContext";
 import { UIProvider } from "@/context/UIContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -23,21 +24,23 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider>
-          <UIProvider>
-            <LayoutWrapper>{children}</LayoutWrapper>
-            <Toaster
-              position="top-right"
-              expand={false}
-              richColors
-              closeButton
-              toastOptions={{
-                className: "toast",
-                duration: 4000,
-              }}
-            />
-          </UIProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <UIProvider>
+              <LayoutWrapper>{children}</LayoutWrapper>
+              <Toaster
+                position="top-right"
+                expand={false}
+                richColors
+                closeButton
+                toastOptions={{
+                  className: "toast",
+                  duration: 4000,
+                }}
+              />
+            </UIProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
