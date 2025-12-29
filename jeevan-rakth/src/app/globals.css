@@ -3,6 +3,11 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Brand Colors */
+  --brand-light: #93C5FD;
+  --brand: #3B82F6;
+  --brand-dark: #1E40AF;
 }
 
 @theme inline {
@@ -10,10 +15,27 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Custom Brand Colors */
+  --color-brand-light: var(--brand-light);
+  --color-brand: var(--brand);
+  --color-brand-dark: var(--brand-dark);
+  
+  /* Custom Breakpoints */
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+/* Dark Mode Support */
+:root.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not(.light) {
     --background: #0a0a0a;
     --foreground: #ededed;
   }
@@ -23,4 +45,5 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }

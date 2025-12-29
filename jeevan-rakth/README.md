@@ -15,6 +15,7 @@ Use this guide when you pull the project for the first time. It covers the tools
 
 - **[User Feedback System Guide](./FEEDBACK_SYSTEM.md)** - Complete documentation for toasts, modals, and loaders
 - **[Authentication Guide](./AUTH.md)** - JWT authentication and authorization details
+- **[Tailwind Responsive Design & Theme System](./TAILWIND_RESPONSIVE_THEME.md)** - Custom colors, breakpoints, and dark mode implementation
 
 ## Requirements
 
@@ -518,3 +519,4 @@ Consider adding:
 - Integration with form analytics
 
 ---
+"" 
