@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { LayoutWrapper } from "@/components";
 import { AuthProvider } from "@/context/AuthContext";
 import { UIProvider } from "@/context/UIContext";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const inter = Inter({
@@ -25,6 +26,16 @@ export default function RootLayout({
         <AuthProvider>
           <UIProvider>
             <LayoutWrapper>{children}</LayoutWrapper>
+            <Toaster
+              position="top-right"
+              expand={false}
+              richColors
+              closeButton
+              toastOptions={{
+                className: "toast",
+                duration: 4000,
+              }}
+            />
           </UIProvider>
         </AuthProvider>
       </body>

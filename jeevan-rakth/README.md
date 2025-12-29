@@ -2,6 +2,20 @@
 
 Use this guide when you pull the project for the first time. It covers the tools you need, the commands to run, and common troubleshooting hints so you can get the app running quickly.
 
+## 🎯 Key Features
+
+- **User Feedback System** - Comprehensive toast notifications, modals, and loaders for excellent UX
+- **Authentication** - Secure JWT-based auth with role-based access control
+- **Database** - PostgreSQL with Prisma ORM
+- **Caching** - Redis for performance optimization
+- **Type Safety** - Full TypeScript with Zod validation
+- **Accessibility** - WCAG 2.1 compliant UI components
+
+## 📚 Documentation
+
+- **[User Feedback System Guide](./FEEDBACK_SYSTEM.md)** - Complete documentation for toasts, modals, and loaders
+- **[Authentication Guide](./AUTH.md)** - JWT authentication and authorization details
+
 ## Requirements
 
 - Node.js 20.x (check with `node --version`)

@@ -2,6 +2,9 @@
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
 import { fetcher } from "@/lib/fetcher";
+import { useToast } from "@/hooks/useToast";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { ButtonLoader } from "@/components";
 
 interface User {
   id: string;
@@ -13,20 +16,34 @@ interface User {
 
 export default function AddUser() {
   const { data: users } = useSWR<User[]>("/api/users", fetcher);
+  const toast = useToast();
+  const { confirm, ConfirmDialog } = useConfirmDialog();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [message, setMessage] = useState("");
 
   const addUser = async () => {
     if (!name || !email) {
-      setMessage("Please fill in all fields");
+      toast.warning("Missing information", {
+        description: "Please fill in all required fields.",
+      });
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Add New User",
+      message: `Are you sure you want to add ${name} (${email}) to the system?`,
+      confirmText: "Add User",
+      variant: "default",
+    });
+
+    if (!confirmed) {
+      toast.info("Action cancelled");
       return;
     }
 
     setIsSubmitting(true);
-    setMessage("");
 
     try {
       // Optimistic update - add user to UI immediately
@@ -43,6 +60,9 @@ export default function AddUser() {
         mutate("/api/users", [...users, optimisticUser], false);
       }
 
+      // Show optimistic feedback
+      toast.loading("Adding user...", { duration: 1000 });
+
       // Actual API call
       const response = await fetch("/api/users", {
         method: "POST",
@@ -58,16 +78,19 @@ export default function AddUser() {
       // Revalidate to get real data from server
       await mutate("/api/users");
 
-      setMessage("✅ User added successfully!");
+      toast.success("User added successfully!", {
+        description: `${name} has been added to the system.`,
+      });
       setName("");
       setEmail("");
       setTimeout(() => {
-        setMessage("");
         setShowForm(false);
-      }, 2000);
+      }, 500);
     } catch (error) {
       console.error("Error adding user:", error);
-      setMessage("❌ Failed to add user. Please try again.");
+      toast.error("Failed to add user", {
+        description: "Please check your connection and try again.",
+      });
       // Revalidate to restore original state
       mutate("/api/users");
     } finally {
@@ -125,25 +148,15 @@ export default function AddUser() {
             />
           </div>
 
-          {message && (
-            <div
-              className={`p-3 rounded ${
-                message.includes("✅")
-                  ? "bg-green-100 text-green-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {message}
-            </div>
-          )}
-
-          <button
+          <ButtonLoader
             onClick={addUser}
-            disabled={isSubmitting}
-            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded transition-colors font-medium"
+            isLoading={isSubmitting}
+            loadingText="Adding..."
+            variant="primary"
+            className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 font-medium"
           >
-            {isSubmitting ? "Adding..." : "Add User"}
-          </button>
+            Add User
+          </ButtonLoader>
 
           <div className="text-sm text-gray-500 bg-yellow-50 border border-yellow-200 rounded p-3">
             <strong>Optimistic UI Demo:</strong> When you click &quot;Add
@@ -152,6 +165,8 @@ export default function AddUser() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog />
     </div>
   );
 }

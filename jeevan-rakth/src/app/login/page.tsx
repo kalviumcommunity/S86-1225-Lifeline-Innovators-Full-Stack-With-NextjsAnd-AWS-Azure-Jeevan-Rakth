@@ -2,32 +2,43 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/useToast";
+import { ButtonLoader } from "@/components";
 
 export default function Login() {
   const router = useRouter();
   const { login } = useAuth();
+  const toast = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError("");
 
     try {
       const success = await login(email, password);
 
       if (success) {
-        // Successfully logged in, redirect to dashboard
-        router.replace("/dashboard");
+        // Successfully logged in
+        toast.success("Login successful!", {
+          description: "Redirecting to dashboard...",
+        });
+        setTimeout(() => {
+          router.replace("/dashboard");
+        }, 500);
       } else {
-        setError("Invalid email or password");
+        toast.error("Login failed", {
+          description: "Invalid email or password. Please try again.",
+        });
         setLoading(false);
       }
     } catch (err) {
-      setError("Network error. Please try again.");
+      toast.error("Network error", {
+        description:
+          "Unable to connect. Please check your connection and try again.",
+      });
       console.error("Login error:", err);
       setLoading(false);
     }
@@ -77,19 +88,15 @@ export default function Login() {
             />
           </div>
 
-          {error && (
-            <div className="p-3 text-sm text-red-700 bg-red-100 rounded-md">
-              {error}
-            </div>
-          )}
-
-          <button
+          <ButtonLoader
             type="submit"
-            disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold px-6 py-3 rounded-md transition-colors"
+            isLoading={loading}
+            loadingText="Logging in..."
+            variant="primary"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3"
           >
-            {loading ? "Logging in..." : "Login"}
-          </button>
+            Login
+          </ButtonLoader>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">

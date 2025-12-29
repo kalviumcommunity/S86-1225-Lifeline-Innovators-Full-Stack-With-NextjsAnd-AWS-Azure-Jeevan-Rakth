@@ -4,6 +4,8 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/useToast";
+import { ButtonLoader } from "@/components";
 
 // 1. Define validation schema
 const signupSchema = z.object({
@@ -18,12 +20,12 @@ type SignupFormData = z.infer<typeof signupSchema>;
 export default function Signup() {
   const router = useRouter();
   const { signup } = useAuth();
+  const toast = useToast();
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setError,
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
   });
@@ -33,16 +35,22 @@ export default function Signup() {
       const success = await signup(data.name, data.email, data.password);
 
       if (success) {
-        // Successfully signed up, redirect to dashboard
-        router.push("/dashboard");
+        // Successfully signed up
+        toast.success("Account created successfully!", {
+          description: "Welcome to Jeevan Rakth. Redirecting to dashboard...",
+        });
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 500);
       } else {
-        setError("root", {
-          message: "Signup failed. Email may already exist.",
+        toast.error("Signup failed", {
+          description: "Email may already exist. Please try another email.",
         });
       }
     } catch (err) {
-      setError("root", {
-        message: "Network error. Please try again.",
+      toast.error("Network error", {
+        description:
+          "Unable to connect. Please check your connection and try again.",
       });
       console.error("Signup error:", err);
     }
@@ -128,22 +136,15 @@ export default function Signup() {
             )}
           </div>
 
-          {errors.root && (
-            <div
-              className="p-3 text-sm text-red-700 bg-red-100 rounded-md"
-              role="alert"
-            >
-              {errors.root.message}
-            </div>
-          )}
-
-          <button
+          <ButtonLoader
             type="submit"
-            disabled={isSubmitting}
-            className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white font-semibold px-6 py-3 rounded-md transition-colors disabled:cursor-not-allowed"
+            isLoading={isSubmitting}
+            loadingText="Creating account..."
+            variant="primary"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-3"
           >
-            {isSubmitting ? "Creating account..." : "Sign Up"}
-          </button>
+            Sign Up
+          </ButtonLoader>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">
