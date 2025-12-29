@@ -12,6 +12,7 @@ export default function Sidebar() {
     { href: "/users", label: "Users" },
     { href: "/upload", label: "Upload Files" },
     { href: "/demo", label: "Context Demo" },
+    { href: "/swr-demo", label: "SWR Demo" },
   ];
 
   if (!sidebarOpen) return null;

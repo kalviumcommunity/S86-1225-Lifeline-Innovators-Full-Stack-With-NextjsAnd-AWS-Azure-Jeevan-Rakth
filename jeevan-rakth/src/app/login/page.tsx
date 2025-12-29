@@ -21,14 +21,14 @@ export default function Login() {
 
       if (success) {
         // Successfully logged in, redirect to dashboard
-        router.push("/dashboard");
+        router.replace("/dashboard");
       } else {
         setError("Invalid email or password");
+        setLoading(false);
       }
     } catch (err) {
       setError("Network error. Please try again.");
       console.error("Login error:", err);
-    } finally {
       setLoading(false);
     }
   }

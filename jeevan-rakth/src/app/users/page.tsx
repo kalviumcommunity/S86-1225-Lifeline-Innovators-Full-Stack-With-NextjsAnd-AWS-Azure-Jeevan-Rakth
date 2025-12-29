@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+import AddUser from "./AddUser";
 
 interface User {
   id: string;
@@ -11,81 +13,32 @@ interface User {
 }
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        // In a real app, you'd fetch from your API
-        // For now, we'll use mock data
-        const mockUsers: User[] = [
-          {
-            id: "1",
-            name: "John Doe",
-            email: "john@example.com",
-            role: "donor",
-            bloodType: "A+",
-          },
-          {
-            id: "2",
-            name: "Jane Smith",
-            email: "jane@example.com",
-            role: "donor",
-            bloodType: "O-",
-          },
-          {
-            id: "3",
-            name: "Admin User",
-            email: "admin@example.com",
-            role: "admin",
-            bloodType: "B+",
-          },
-          {
-            id: "4",
-            name: "Bob Johnson",
-            email: "bob@example.com",
-            role: "donor",
-            bloodType: "AB+",
-          },
-          {
-            id: "5",
-            name: "Alice Williams",
-            email: "alice@example.com",
-            role: "donor",
-            bloodType: "O+",
-          },
-        ];
-
-        setUsers(mockUsers);
-        setLoading(false);
-      } catch (err) {
-        setError("Failed to fetch users");
-        setLoading(false);
-        console.error("Error fetching users:", err);
-      }
-    }
-
-    fetchUsers();
-  }, []);
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading users...</p>
-        </div>
-      </main>
-    );
-  }
+  const {
+    data: users,
+    error,
+    isLoading,
+  } = useSWR<User[]>("/api/users", fetcher, {
+    revalidateOnFocus: true,
+    refreshInterval: 10000, // Auto-refresh every 10 seconds
+  });
 
   if (error) {
     return (
       <main className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center text-red-600">
-          <p className="text-xl font-semibold">{error}</p>
+          <p className="text-xl font-semibold">Failed to load users</p>
+          <p className="text-sm mt-2">{error.message}</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading users...</p>
         </div>
       </main>
     );
@@ -101,8 +54,11 @@ export default function UsersPage() {
           </p>
         </div>
 
+        {/* Add User Component */}
+        <AddUser />
+
         {/* Users Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-lg shadow overflow-hidden mt-6">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -176,11 +132,12 @@ export default function UsersPage() {
         {/* Info Section */}
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-blue-900 mb-2">
-            🔒 Protected Route
+            🔒 Protected Route with SWR
           </h3>
           <p className="text-blue-800">
-            This users listing page is protected. Click on any user to view
-            their detailed profile using dynamic routing.
+            This users listing page uses SWR for data fetching with automatic
+            caching and revalidation. Data auto-refreshes every 10 seconds and
+            when you refocus the tab.
           </p>
         </div>
       </div>
