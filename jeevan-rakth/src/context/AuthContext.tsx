@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await response.json();
         setUser(data.user);
         console.log("User logged in:", data.user);
+        console.log("Access token received and stored in cookie");
         return true;
       } else {
         const error = await response.json();

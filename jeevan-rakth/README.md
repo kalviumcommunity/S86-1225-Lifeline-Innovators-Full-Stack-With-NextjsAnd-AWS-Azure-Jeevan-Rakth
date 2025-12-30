@@ -13,8 +13,16 @@ Use this guide when you pull the project for the first time. It covers the tools
 
 ## 📚 Documentation
 
-- **[User Feedback System Guide](./FEEDBACK_SYSTEM.md)** - Complete documentation for toasts, modals, and loaders
+### Authentication & Security
+- **[JWT Authentication System](./JWT_AUTHENTICATION.md)** - Complete JWT implementation with access/refresh tokens, security measures, and testing guide
+- **[JWT Setup Guide](./JWT_SETUP_GUIDE.md)** - Quick start installation and configuration
+- **[JWT Security Visual Guide](./JWT_SECURITY_VISUAL_GUIDE.md)** - Visual diagrams of security flows and protections
+- **[JWT Implementation Overview](./JWT_IMPLEMENTATION_OVERVIEW.md)** - High-level architecture and system design
+- **[JWT Deployment Checklist](./JWT_DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification checklist
 - **[Authentication Guide](./AUTH.md)** - JWT authentication and authorization details
+
+### UI & UX
+- **[User Feedback System Guide](./FEEDBACK_SYSTEM.md)** - Complete documentation for toasts, modals, and loaders
 - **[Tailwind Responsive Design & Theme System](./TAILWIND_RESPONSIVE_THEME.md)** - Custom colors, breakpoints, and dark mode implementation
 - **[Loading & Error States Guide](./LOADING_ERROR_STATES.md)** - Loading skeletons and error boundaries implementation
 

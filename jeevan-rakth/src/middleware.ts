@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import jwt from "jsonwebtoken";
-
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
-
-type TokenPayload = jwt.JwtPayload & {
-  email?: string;
-  role?: string;
-};
+import { verifyAccessToken, type DecodedToken } from "@/lib/jwt";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -19,7 +12,7 @@ export function middleware(req: NextRequest) {
 
   // Protected frontend routes
   if (pathname.startsWith("/dashboard") || pathname.startsWith("/users")) {
-    const token = req.cookies.get("token")?.value;
+    const token = req.cookies.get("accessToken")?.value;
 
     if (!token) {
       const loginUrl = new URL("/login", req.url);
@@ -27,9 +20,11 @@ export function middleware(req: NextRequest) {
     }
 
     try {
-      jwt.verify(token, JWT_SECRET);
+      verifyAccessToken(token);
       return NextResponse.next();
     } catch {
+      // Access token expired or invalid - redirect to login
+      // Client should attempt refresh before redirecting
       const loginUrl = new URL("/login", req.url);
       return NextResponse.redirect(loginUrl);
     }
@@ -40,17 +35,17 @@ export function middleware(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.startsWith("Bearer ")
       ? authHeader.split(" ")[1]
-      : null;
+      : req.cookies.get("accessToken")?.value;
 
     if (!token) {
       return NextResponse.json(
-        { success: false, message: "Token missing" },
+        { success: false, message: "Access token missing" },
         { status: 401 }
       );
     }
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+      const decoded = verifyAccessToken(token) as DecodedToken;
 
       // Role-based access control
       if (pathname.startsWith("/api/admin") && decoded.role !== "admin") {
@@ -62,15 +57,23 @@ export function middleware(req: NextRequest) {
 
       // Forward user context to downstream handlers
       const headers = new Headers(req.headers);
-      if (decoded.email) headers.set("x-user-email", decoded.email);
-      if (decoded.role) headers.set("x-user-role", decoded.role);
+      headers.set("x-user-id", decoded.id);
+      headers.set("x-user-email", decoded.email);
+      headers.set("x-user-role", decoded.role);
 
       return NextResponse.next({ request: { headers } });
     } catch (error) {
-      console.warn("Middleware JWT verification failed", error);
+      console.warn("Middleware JWT verification failed:", error);
       return NextResponse.json(
-        { success: false, message: "Invalid or expired token" },
-        { status: 403 }
+        {
+          success: false,
+          message:
+            error instanceof Error
+              ? error.message
+              : "Invalid or expired access token",
+          code: "TOKEN_EXPIRED",
+        },
+        { status: 401 }
       );
     }
   }
