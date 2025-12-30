@@ -1,6 +1,5 @@
 import bcrypt from "bcrypt";
 import { prisma } from "@/lib/prisma";
-import jwt from "jsonwebtoken";
 import { signupSchema } from "@/lib/schemas/authSchema";
 import {
   errorResponse,
@@ -8,8 +7,7 @@ import {
   ERROR_CODES,
 } from "@/lib/responseHandler";
 import redis from "@/lib/redis";
-
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+import { generateTokenPair, type TokenPayload } from "@/lib/jwt";
 
 export async function POST(req: Request) {
   try {
@@ -53,14 +51,14 @@ export async function POST(req: Request) {
       console.warn("Redis DEL failed during signup cache invalidation", err);
     }
 
-    const tokenPayload = {
+    const tokenPayload: TokenPayload = {
       id: newUser.id,
       email: newUser.email,
       role: newUser.role ?? "user",
     };
-    const token = jwt.sign(tokenPayload, JWT_SECRET, {
-      expiresIn: "1h",
-    });
+
+    // Generate both access and refresh tokens
+    const { accessToken, refreshToken } = generateTokenPair(tokenPayload);
 
     const safeUser = {
       id: newUser.id,
@@ -71,15 +69,26 @@ export async function POST(req: Request) {
 
     const res = successResponse(
       "Signup successful",
-      { user: safeUser, token },
+      { user: safeUser, accessToken },
       { status: 201 }
     );
-    res.cookies.set("token", token, {
+
+    // Set access token cookie (15 minutes)
+    res.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
-      maxAge: 60 * 60,
+      maxAge: 15 * 60, // 15 minutes
+    });
+
+    // Set refresh token cookie (7 days)
+    res.cookies.set("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/api/auth/refresh",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
     return res;

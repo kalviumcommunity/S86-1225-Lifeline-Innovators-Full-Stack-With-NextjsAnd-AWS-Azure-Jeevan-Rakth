@@ -1,14 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import {
   successResponse,
   errorResponse,
   ERROR_CODES,
 } from "@/lib/responseHandler";
 import { loginSchema } from "@/lib/schemas/authSchema";
-
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+import { generateTokenPair, type TokenPayload } from "@/lib/jwt";
 
 export async function POST(req: Request) {
   try {
@@ -41,14 +39,14 @@ export async function POST(req: Request) {
     if (!isPasswordValid)
       return errorResponse("Invalid credentials", { status: 401 });
 
-    const tokenPayload = {
+    const tokenPayload: TokenPayload = {
       id: user.id,
       email: user.email,
       role: user.role ?? "user",
     };
-    const token = jwt.sign(tokenPayload, JWT_SECRET, {
-      expiresIn: "1h",
-    });
+
+    // Generate both access and refresh tokens
+    const { accessToken, refreshToken } = generateTokenPair(tokenPayload);
 
     const safeUser = {
       id: user.id,
@@ -57,13 +55,27 @@ export async function POST(req: Request) {
       role: user.role ?? "user",
     };
 
-    const res = successResponse("Login successful", { user: safeUser, token });
-    res.cookies.set("token", token, {
+    const res = successResponse("Login successful", {
+      user: safeUser,
+      accessToken,
+    });
+
+    // Set access token cookie (15 minutes)
+    res.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
-      maxAge: 60 * 60,
+      maxAge: 15 * 60, // 15 minutes
+    });
+
+    // Set refresh token cookie (7 days) - more secure
+    res.cookies.set("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/api/auth/refresh", // Only sent to refresh endpoint
+      maxAge: 7 * 24 * 60 * 60, // 7 days
     });
 
     return res;
