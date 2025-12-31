@@ -10,6 +10,7 @@ import { userCreateSchema } from "@/lib/schemas/userSchema";
 import { handleError } from "@/lib/errorHandler";
 import redis, { DEFAULT_CACHE_TTL } from "@/lib/redis";
 import { requirePermission } from "@/lib/rbac";
+import { sanitizeInput, validateEmail } from "@/lib/sanitize";
 // Uncomment to test loading/error states:
 // import { simulateDelay, simulateError } from "@/lib/testUtils";
 
@@ -99,7 +100,23 @@ export const POST = requirePermission(
 )(async (req: NextRequest) => {
   try {
     const body = await req.json();
-    const parsed = userCreateSchema.safeParse(body);
+
+    // Sanitize all input fields before validation
+    const sanitizedBody = {
+      email: body.email ? sanitizeInput(body.email.trim()) : body.email,
+      name: body.name ? sanitizeInput(body.name) : body.name,
+      role: body.role ? sanitizeInput(body.role) : body.role,
+    };
+
+    // Additional email validation
+    if (sanitizedBody.email && !validateEmail(sanitizedBody.email)) {
+      return errorResponse("Invalid email format", {
+        status: 400,
+        code: ERROR_CODES.VALIDATION_ERROR,
+      });
+    }
+
+    const parsed = userCreateSchema.safeParse(sanitizedBody);
     if (!parsed.success) {
       return errorResponse("Validation Error", {
         status: 400,
