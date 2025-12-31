@@ -1,9 +1,19 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyAccessToken, type DecodedToken } from "@/lib/jwt";
+import {
+  handleCorsPreflightRequest,
+  applyCorsHeaders,
+} from "@/lib/securityHeaders";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const origin = req.headers.get("origin");
+
+  // Handle CORS preflight requests for all API routes
+  if (req.method === "OPTIONS" && pathname.startsWith("/api")) {
+    return handleCorsPreflightRequest(origin || undefined);
+  }
 
   // Public routes (accessible without authentication)
   if (pathname.startsWith("/login") || pathname === "/") {
@@ -38,10 +48,11 @@ export function middleware(req: NextRequest) {
       : req.cookies.get("accessToken")?.value;
 
     if (!token) {
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, message: "Access token missing" },
         { status: 401 }
       );
+      return applyCorsHeaders(response, origin || undefined);
     }
 
     try {
@@ -49,10 +60,11 @@ export function middleware(req: NextRequest) {
 
       // Role-based access control
       if (pathname.startsWith("/api/admin") && decoded.role !== "admin") {
-        return NextResponse.json(
+        const response = NextResponse.json(
           { success: false, message: "Access denied" },
           { status: 403 }
         );
+        return applyCorsHeaders(response, origin || undefined);
       }
 
       // Forward user context to downstream handlers
@@ -61,10 +73,11 @@ export function middleware(req: NextRequest) {
       headers.set("x-user-email", decoded.email);
       headers.set("x-user-role", decoded.role);
 
-      return NextResponse.next({ request: { headers } });
+      const response = NextResponse.next({ request: { headers } });
+      return applyCorsHeaders(response, origin || undefined);
     } catch (error) {
       console.warn("Middleware JWT verification failed:", error);
-      return NextResponse.json(
+      const response = NextResponse.json(
         {
           success: false,
           message:
@@ -75,7 +88,14 @@ export function middleware(req: NextRequest) {
         },
         { status: 401 }
       );
+      return applyCorsHeaders(response, origin || undefined);
     }
+  }
+
+  // Apply CORS headers to all API responses
+  if (pathname.startsWith("/api")) {
+    const response = NextResponse.next();
+    return applyCorsHeaders(response, origin || undefined);
   }
 
   return NextResponse.next();
