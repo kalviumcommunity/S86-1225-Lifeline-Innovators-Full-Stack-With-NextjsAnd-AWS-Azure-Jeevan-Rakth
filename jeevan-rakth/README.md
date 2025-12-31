@@ -15,6 +15,7 @@ Use this guide when you pull the project for the first time. It covers the tools
 
 ### Authentication & Security
 - **[JWT Authentication System](./JWT_AUTHENTICATION.md)** - Complete JWT implementation with access/refresh tokens, security measures, and testing guide
+- **[RBAC (Role-Based Access Control)](./RBAC_GUIDE.md)** - 🔐 **NEW!** Complete RBAC implementation with roles, permissions, and access control
 - **[JWT Setup Guide](./JWT_SETUP_GUIDE.md)** - Quick start installation and configuration
 - **[JWT Security Visual Guide](./JWT_SECURITY_VISUAL_GUIDE.md)** - Visual diagrams of security flows and protections
 - **[JWT Implementation Overview](./JWT_IMPLEMENTATION_OVERVIEW.md)** - High-level architecture and system design

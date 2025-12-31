@@ -1,7 +1,6 @@
 import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import jwt from "jsonwebtoken";
 import {
   ERROR_CODES,
   errorResponse,
@@ -10,33 +9,22 @@ import {
 import { userCreateSchema } from "@/lib/schemas/userSchema";
 import { handleError } from "@/lib/errorHandler";
 import redis, { DEFAULT_CACHE_TTL } from "@/lib/redis";
+import { requirePermission } from "@/lib/rbac";
 // Uncomment to test loading/error states:
 // import { simulateDelay, simulateError } from "@/lib/testUtils";
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
-
 // GET /api/users?page=1&limit=10 → list users with pagination
-export async function GET(req: Request) {
+// RBAC: Requires 'read' permission on 'users' resource
+export const GET = requirePermission(
+  "read",
+  "users"
+)(async (req: NextRequest) => {
   try {
     // 🧪 TEST LOADING STATE: Uncomment to add 3-second delay
     // await simulateDelay(3000);
 
     // 🧪 TEST ERROR STATE: Uncomment to simulate an error
     // simulateError('Database connection failed');
-    // verify auth token
-    const authHeader = req.headers.get("authorization");
-    const token = authHeader?.split(" ")[1];
-
-    if (!token) {
-      return errorResponse("Token missing", { status: 401 });
-    }
-
-    try {
-      jwt.verify(token, JWT_SECRET);
-    } catch (err) {
-      console.warn("JWT verification failed:", err);
-      return errorResponse("Invalid or expired token", { status: 403 });
-    }
 
     const { searchParams } = new URL(req.url);
 
@@ -101,10 +89,14 @@ export async function GET(req: Request) {
       code: ERROR_CODES.USERS_FETCH_FAILED,
     });
   }
-}
+});
 
 // POST /api/users → create a user
-export async function POST(req: Request) {
+// RBAC: Requires 'create' permission on 'users' resource (admin only)
+export const POST = requirePermission(
+  "create",
+  "users"
+)(async (req: NextRequest) => {
   try {
     const body = await req.json();
     const parsed = userCreateSchema.safeParse(body);
@@ -152,4 +144,4 @@ export async function POST(req: Request) {
       code: ERROR_CODES.USERS_FETCH_FAILED,
     });
   }
-}
+});
