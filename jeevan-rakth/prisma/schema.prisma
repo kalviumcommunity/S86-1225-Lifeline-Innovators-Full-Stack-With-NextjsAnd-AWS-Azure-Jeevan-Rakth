@@ -1,10 +1,20 @@
+// =======================
+// PRISMA CONFIGURATION
+// =======================
+// This schema is configured for PostgreSQL
+// Supports local development and managed databases (AWS RDS, Azure Database for PostgreSQL)
+
 generator client {
   provider = "prisma-client-js"
+  // Uncomment below for better performance with large datasets
+  // binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // For production with connection pooling, you can use directUrl
+  // directUrl = env("DATABASE_DIRECT_URL")
 }
 
 // =======================
