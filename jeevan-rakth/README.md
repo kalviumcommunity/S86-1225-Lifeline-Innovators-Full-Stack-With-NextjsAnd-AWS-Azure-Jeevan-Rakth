@@ -4,6 +4,7 @@ Use this guide when you pull the project for the first time. It covers the tools
 
 ## 🎯 Key Features
 
+- **Object Storage** - Secure file uploads to AWS S3 and Azure Blob Storage with presigned URLs
 - **User Feedback System** - Comprehensive toast notifications, modals, and loaders for excellent UX
 - **Authentication** - Secure JWT-based auth with role-based access control
 - **Database** - PostgreSQL with Prisma ORM
@@ -30,6 +31,13 @@ Use this guide when you pull the project for the first time. It covers the tools
 - **[JWT Implementation Overview](./JWT_IMPLEMENTATION_OVERVIEW.md)** - High-level architecture and system design
 - **[JWT Deployment Checklist](./JWT_DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification checklist
 - **[Authentication Guide](./AUTH.md)** - JWT authentication and authorization details
+
+### 📦 Object Storage & File Uploads
+- **[Object Storage Quick Start](./OBJECT_STORAGE_QUICK_START.md)** - ⚡ **START HERE!** 5-minute setup for AWS S3 or Azure Blob Storage
+- **[Object Storage Complete Guide](./OBJECT_STORAGE_GUIDE.md)** - 📖 Full implementation guide with AWS S3 and Azure Blob Storage setup, security, and cost optimization
+- **[Object Storage Implementation Summary](./OBJECT_STORAGE_IMPLEMENTATION.md)** - 📝 Feature overview, API documentation, and usage examples
+- **[Object Storage Architecture](./OBJECT_STORAGE_ARCHITECTURE.md)** - 🏗️ System diagrams, data flow, and security architecture
+- **[Object Storage Testing Guide](./OBJECT_STORAGE_TESTING.md)** - 🧪 Complete test suite with 60+ test cases
 
 ### UI & UX
 - **[User Feedback System Guide](./FEEDBACK_SYSTEM.md)** - Complete documentation for toasts, modals, and loaders
