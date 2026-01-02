@@ -13,7 +13,14 @@ Use this guide when you pull the project for the first time. It covers the tools
 
 ## 📚 Documentation
 
-### Authentication & Security
+### 🗄️ Database & Infrastructure
+- **[Managed Database Quick Start](./MANAGED_DATABASE_QUICK_START.md)** - ⚡ **START HERE!** 5-minute setup guide for AWS RDS or Azure Database
+- **[Managed Database Setup Guide](./MANAGED_DATABASE_SETUP.md)** - 📖 Complete guide for AWS RDS and Azure Database for PostgreSQL (provisioning, security, backups, cost optimization)
+- **[Database Deployment Checklist](./DATABASE_DEPLOYMENT_CHECKLIST.md)** - ✅ Pre-deployment validation checklist for production
+- **[Database Architecture Diagrams](./MANAGED_DATABASE_ARCHITECTURE.md)** - 📊 Visual architecture, security layers, and data flow diagrams
+- **[Database Implementation Summary](./MANAGED_DATABASE_IMPLEMENTATION_SUMMARY.md)** - 📝 Complete implementation overview and technical details
+
+### 🔐 Authentication & Security
 - **[JWT Authentication System](./JWT_AUTHENTICATION.md)** - Complete JWT implementation with access/refresh tokens, security measures, and testing guide
 - **[RBAC (Role-Based Access Control)](./RBAC_GUIDE.md)** - 🔐 Complete RBAC implementation with roles, permissions, and access control
 - **[Security Guide](./SECURITY.md)** - 🛡️ OWASP security measures: XSS prevention, SQL injection protection, input sanitization
@@ -79,9 +86,15 @@ Notes:
    ```
 
 2. Edit `.env` and set:
-   - `DATABASE_URL` – PostgreSQL connection string (format: `postgresql://USER:PASSWORD@HOST:PORT/DATABASE`)
+   - `DATABASE_URL` – PostgreSQL connection string
+     - **Local Development**: `postgresql://USER:PASSWORD@localhost:5432/jeevanrakth`
+     - **AWS RDS**: `postgresql://adminuser:password@endpoint.rds.amazonaws.com:5432/jeevanrakth?sslmode=require`
+     - **Azure Database**: `postgresql://adminuser:password@server.postgres.database.azure.com:5432/jeevanrakth?sslmode=require`
    - `JWT_SECRET` – random string for signing tokens (change the default before deploying)
+   - `JWT_REFRESH_SECRET` – random string for refresh tokens
    - Any other keys documented in `.env.example`
+
+> **For Managed Databases:** See the complete [Managed Database Setup Guide](./MANAGED_DATABASE_SETUP.md) for AWS RDS or Azure Database for PostgreSQL provisioning, configuration, and migration steps.
 
 > Ensure the database referenced in `DATABASE_URL` already exists. You can create it with `createdb jeevan_rakth` or via your SQL client.
 
@@ -129,11 +142,27 @@ Visit http://localhost:3000 once the server reports “Ready”. Hot reloading i
 
 ## 7. Useful Scripts
 
-- `npm run lint` – run ESLint across the project
-- `npm run build` – build the production bundle
-- `npm run start` – serve the built app (run `npm run build` first)
-- `npx prisma migrate dev --name <migration_name>` – create a named migration after editing `prisma/schema.prisma`
-- `npx prisma migrate reset` – drop and recreate the database from migrations
+### Development
+- `npm run dev` – Start development server
+- `npm run build` – Build production bundle
+- `npm run start` – Serve the built app (run `npm run build` first)
+- `npm run lint` – Run ESLint across the project
+
+### Database Management
+- `npx prisma migrate dev --name <migration_name>` – Create a named migration after editing `prisma/schema.prisma`
+- `npx prisma migrate deploy` – Apply migrations in production
+- `npx prisma migrate reset` – Drop and recreate the database from migrations
+- `npx prisma studio` – Open Prisma Studio for database inspection
+- `npx prisma generate` – Generate Prisma Client
+
+### Database Validation & Testing
+- `npm run test:connection` – Test database connectivity and configuration
+- `npm run verify:backups` – Verify backup configuration (AWS RDS / Azure Database)
+- `npm run validate:database` – Run comprehensive database validation suite
+- `npm run test:security` – Run security validation tests
+
+### Health Checks
+- Visit `http://localhost:3000/api/health/database` – Database health check endpoint
 
 ## 8. Project Structure Highlights
 
@@ -144,10 +173,33 @@ Visit http://localhost:3000 once the server reports “Ready”. Hot reloading i
 
 ## 9. Common Issues
 
+### Database Connection Issues
 - **Cannot connect to database** – verify `DATABASE_URL`, ensure PostgreSQL is running, and the database exists.
+- **SSL/TLS errors with managed databases** – Ensure `sslmode=require` is in your connection string for AWS RDS or Azure Database
+- **Connection timeout** – Check firewall rules / security groups allow your IP on port 5432
+- **Connection pool exhausted** – Consider using connection pooling (RDS Proxy, PgBouncer, or Prisma Accelerate)
+
+### Migration & Schema Issues
 - **Prisma migrate errors** – delete `node_modules/.prisma`, rerun `npm install`, then `npx prisma migrate dev`.
+- **Schema drift detected** – Run `npx prisma db push` to sync schema without creating a migration
+- **Migration fails on managed database** – Verify database user has sufficient permissions
+
+### Authentication Issues
 - **JWT authentication failing** – confirm `JWT_SECRET` in `.env` matches the one used when tokens were issued; restart `npm run dev` after changing env vars.
+- **Token expired errors** – Check token expiration settings in `src/lib/jwt.ts`
+
+### General Issues
 - **Port 3000 already in use** – stop the conflicting process or run `PORT=3100 npm run dev` (PowerShell: `$env:PORT=3100; npm run dev`).
+- **Missing dependencies** – Run `npm install` to install all required packages
+- **Build errors** – Clear `.next` folder and rebuild: `rm -rf .next && npm run build`
+
+### Managed Database Specific
+- **High latency** – Consider moving database to same region as application
+- **Backup failures** – Verify backup configuration with `npm run verify:backups`
+- **Storage full** – Enable autoscaling or manually increase storage size
+- **Performance issues** – Check slow query logs, add indexes, or upgrade instance size
+
+**For detailed troubleshooting, see [Managed Database Setup Guide](./MANAGED_DATABASE_SETUP.md#troubleshooting)**
 
 ## 10. Next Steps
 
